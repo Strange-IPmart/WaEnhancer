@@ -156,6 +156,15 @@ public class Unobfuscator {
         return text.contains(contains);
     }
 
+    public static boolean isCalledFromStrings(String... contains) {
+        var trace = Thread.currentThread().getStackTrace();
+        var text = Arrays.toString(trace);
+        for (String s : contains) {
+            if (text.contains(s)) return true;
+        }
+        return false;
+    }
+
 
     // TODO: Classes and Methods for FreezeSeen
     public static Method loadFreezeSeenMethod(ClassLoader classLoader) throws Exception {
@@ -193,6 +202,17 @@ public class Unobfuscator {
             var methodResult = classData.findMethod(new FindMethod().matcher(new MethodMatcher().addUsingString("sender")));
             if (methodResult.isEmpty()) throw new Exception("Receipt method not found");
             return methodResult.get(0).getMethodInstance(classLoader);
+        });
+    }
+
+    public static Method loadReceiptMethod3(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> {
+            var method = loadReceiptMethod(classLoader);
+            var classList = dexkit.findClass(new FindClass().matcher(new ClassMatcher().addUsingString("callCreatorJid")));
+            if (classList.isEmpty()) throw new Exception("Receipt method not found");
+            var methodDataList = dexkit.findMethod(new FindMethod().searchInClass(classList).matcher(new MethodMatcher().addInvoke(DexSignUtil.getMethodDescriptor(method))));
+            if (methodDataList.isEmpty()) throw new Exception("Receipt method not found");
+            return methodDataList.get(0).getMethodInstance(classLoader);
         });
     }
 
