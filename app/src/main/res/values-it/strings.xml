@@ -2,7 +2,7 @@
 <resources>
     <string name="app_desc">Modulo WhatsApp Enhancer</string>
     <string name="antirevoke">Anti-Eliminazione Messaggi</string>
-    <string name="antirevoke_sum">I messaggi non verranno eliminati per te.</string>
+    <string name="antirevoke_sum">I messaggi non verranno eliminati per te</string>
     <string name="ghostmode">Nascondi digitazione</string>
     <string name="ghostmode_sum">Gli altri non possono vedere che stai digitando</string>
     <string name="ghostmode_r">Nascondi la registrazione di un audio</string>
