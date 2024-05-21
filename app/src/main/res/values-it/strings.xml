@@ -266,4 +266,9 @@
     <string name="navigation_transparency">Trasparenza Barra Navigazione</string>
     <string name="show_online_last_seen_in_conversation_list">Mostra Online/Ultimo Visto nell\'Elenco Conversazioni</string>
     <string name="show_online_last_seen_in_conversation_list_sum">Mostra un testo online o visto l\'ultima volta nella schermata iniziale\n(NOTA: è necessario attivare la visualizzazione online per tutti nel menu Impostazioni privacy di WhatsApp)</string>
+    <string name="toast_online">%s è online</string>
+    <string name="show_toast_on_contact_online">Mostra Toast al Contatto Online</string>
+    <string name="show_toast_on_contact_online_sum">Mostra notifica Toast quando un contatto è online</string>
+    <string name="new_context_menu_ui">Nuova UI Menu Contestuale</string>
+    <string name="new_context_menu_ui_sum">Verrà abilitato il nuovo menu contestuale dei messaggi in stile iOS.</string>
 </resources>
