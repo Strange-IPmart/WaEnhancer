@@ -69,6 +69,7 @@ public class Others extends Feature {
         var toast_viewed_status = prefs.getBoolean("toast_viewed_status", false);
         var toast_viewed_message = prefs.getBoolean("toast_viewed_message", false);
         var audio_type = Integer.parseInt(prefs.getString("audio_type", "0"));
+        var audio_transcription = prefs.getBoolean("audio_transcription", false);
 
         propsBoolean.put(5171, filterSeen); // filtros de chat e grupos
         propsBoolean.put(4524, novoTema);
@@ -95,6 +96,11 @@ public class Others extends Feature {
             propsBoolean.put(8025, false);
             propsBoolean.put(6251, false);
             propsBoolean.put(7639, false);
+        }
+
+        if (audio_transcription) {
+            Others.propsBoolean.put(8632, true);
+            Others.propsBoolean.put(2890, true);
         }
 
         propsInteger.put(8522, fbstyle ? 1 : 0);
@@ -209,7 +215,7 @@ public class Others extends Feature {
                     if (TextUtils.isEmpty(contactName)) {
                         contactName = WppCore.stripJID(raw);
                     }
-                    var sql = MessageStore.database.getReadableDatabase();
+                    var sql = MessageStore.getDatabase();
                     try (var result = sql.query("status", null, "message_table_id = ?", new String[]{String.valueOf(id)}, null, null, null)) {
                         if (result.moveToNext()) {
                             if (toast_viewed_status) {
@@ -405,10 +411,11 @@ public class Others extends Feature {
     }
 
     private void hookMenuOptions(boolean newSettings, boolean showFreezeLastSeen, boolean showDnd, String filterChats) {
-        var homecls = XposedHelpers.findClass("com.whatsapp.HomeActivity", classLoader);
-        WppCore.addMenuItemClass(homecls, new WppCore.OnMenuCreate() {
+        XposedHelpers.findAndHookMethod("com.whatsapp.HomeActivity", classLoader, "onCreateOptionsMenu", Menu.class, new XC_MethodHook() {
             @Override
-            public void onAfterCreate(Activity activity, Menu menu) {
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                var menu = (Menu) param.args[0];
+                var activity = (Activity) param.thisObject;
                 if (prefs.getBoolean("restartbutton", true)) {
                     var iconDraw = activity.getDrawable(ResId.drawable.refresh);
                     iconDraw.setTint(newSettings ? DesignUtils.getPrimaryTextColor() : 0xff8696a0);
