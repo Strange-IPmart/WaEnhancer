@@ -12,6 +12,10 @@
             app:title="@string/theme_mode" />
 
         <rikka.material.preference.MaterialSwitchPreference
+            app:key="force_english"
+            app:title="Force English in Wa Enhancer" />
+
+        <rikka.material.preference.MaterialSwitchPreference
             app:defaultValue="true"
             app:key="enablelogs"
             app:title="@string/verbose_logs" />
@@ -68,12 +72,6 @@
             app:key="restartbutton"
             app:summary="@string/enable_restart_button_sum"
             app:title="@string/enable_restart_button" />
-
-        <rikka.material.preference.MaterialSwitchPreference
-            app:defaultValue="true"
-            app:key="show_freezeLastSeen"
-            app:summary="@string/show_freezeLastSeen_sum"
-            app:title="@string/show_freezeLastSeen_button" />
 
         <rikka.material.preference.MaterialSwitchPreference
             app:key="separategroups"

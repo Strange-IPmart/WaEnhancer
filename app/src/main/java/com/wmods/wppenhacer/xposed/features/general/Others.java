@@ -70,7 +70,10 @@ public class Others extends Feature {
         var toast_viewed_message = prefs.getBoolean("toast_viewed_message", false);
         var audio_type = Integer.parseInt(prefs.getString("audio_type", "0"));
         var audio_transcription = prefs.getBoolean("audio_transcription", false);
+        var oldStatus = prefs.getBoolean("oldstatus", false);
+        var igstatus = prefs.getBoolean("igstatus", false);
 
+        propsInteger.put(3877, oldStatus ? igstatus ? 2 : 0 : 2);
         propsBoolean.put(5171, filterSeen); // filtros de chat e grupos
         propsBoolean.put(4524, novoTema);
         propsBoolean.put(4497, menuWIcons);
@@ -90,6 +93,9 @@ public class Others extends Feature {
         propsBoolean.put(5418, true);
 
         propsBoolean.put(9051, true);
+
+        propsBoolean.put(6798, true); // show all status
+
         propsBoolean.put(5332, false);
 
         if (metaai) {
@@ -103,8 +109,10 @@ public class Others extends Feature {
             Others.propsBoolean.put(2890, true);
         }
 
+
         propsInteger.put(8522, fbstyle ? 1 : 0);
         propsInteger.put(8521, fbstyle ? 1 : 0);
+
 
         hookProps();
 
@@ -133,6 +141,7 @@ public class Others extends Feature {
         }
         customPlayBackSpeed();
         showOnline(showOnline);
+
 
     }
 
@@ -219,7 +228,7 @@ public class Others extends Feature {
                     try (var result = sql.query("status", null, "message_table_id = ?", new String[]{String.valueOf(id)}, null, null, null)) {
                         if (result.moveToNext()) {
                             if (toast_viewed_status) {
-                                Utils.showToast(String.format("%s viewed your status", contactName), Toast.LENGTH_LONG);
+                                Utils.showToast(Utils.getApplication().getString(ResId.string.viewed_your_status, contactName), Toast.LENGTH_LONG);
                             }
                             Tasker.sendTaskerEvent(contactName, WppCore.stripJID(raw), "viewed_status");
                         } else if (!Objects.equals(WppCore.getCurrentRawJID(), raw)) {
@@ -229,7 +238,7 @@ public class Others extends Feature {
                                     try (var result3 = sql.query("chat", null, "_id = ? AND subject IS NULL", new String[]{String.valueOf(chat_id)}, null, null, null)) {
                                         if (result3.moveToNext()) {
                                             if (toast_viewed_message)
-                                                Utils.showToast(String.format("%s viewed your message", contactName), Toast.LENGTH_LONG);
+                                                Utils.showToast(Utils.getApplication().getString(ResId.string.viewed_your_message, contactName), Toast.LENGTH_LONG);
                                             Tasker.sendTaskerEvent(contactName, WppCore.stripJID(raw), "viewed_message");
                                         }
                                     }
@@ -372,7 +381,6 @@ public class Others extends Feature {
         var methodPropsBoolean = Unobfuscator.loadPropsBooleanMethod(classLoader);
         logDebug(Unobfuscator.getMethodDescriptor(methodPropsBoolean));
         var dataUsageActivityClass = XposedHelpers.findClass("com.whatsapp.settings.SettingsDataUsageActivity", classLoader);
-        var workManagerClass = Unobfuscator.loadWorkManagerClass(classLoader);
         XposedBridge.hookMethod(methodPropsBoolean, new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
@@ -384,11 +392,6 @@ public class Others extends Feature {
                     switch (i) {
                         case 4023:
                             if (Unobfuscator.isCalledFromClass(dataUsageActivityClass))
-                                return;
-                            break;
-                        // Fix bug in work manager
-                        case 3877:
-                            if (!Unobfuscator.isCalledFromClass(workManagerClass))
                                 return;
                             break;
                     }
