@@ -1,6 +1,9 @@
-[CHANNELS]
-* Fixed bug where statuses disappeared.
+[HIDE CHANNELS]
+* Fixed bug when hiding recommendation
 
+[CALL PRIVACY]
+* Fixed bug for deleted contacts or with real names in unknown contacts
 
-
+[FORWARD LIMIT]
+* Fixed bug when trying to find the number of selected contacts
 
