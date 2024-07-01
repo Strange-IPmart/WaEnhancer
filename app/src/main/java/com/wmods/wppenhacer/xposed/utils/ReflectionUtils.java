@@ -26,7 +26,7 @@ public class ReflectionUtils {
     /**
      * @noinspection SimplifyStreamApiCallChains
      */
-    public static Method[] findAllMethodUsingFilter(Class<?> clazz, Predicate<Method> predicate) {
+    public static Method[] findAllMethodsUsingFilter(Class<?> clazz, Predicate<Method> predicate) {
         do {
             var results = Arrays.stream(clazz.getDeclaredMethods()).filter(predicate).collect(Collectors.toList());
             if (!results.isEmpty()) return results.toArray(new Method[0]);
@@ -34,9 +34,36 @@ public class ReflectionUtils {
         throw new RuntimeException("Method not found");
     }
 
+    public static Field findFieldUsingFilter(Class<?> clazz, Predicate<Field> predicate) {
+        do {
+            var results = Arrays.stream(clazz.getDeclaredFields()).filter(predicate).findFirst();
+            if (results.isPresent()) return results.get();
+        } while ((clazz = clazz.getSuperclass()) != null);
+        throw new RuntimeException("Field not found");
+    }
+
+    /**
+     * @noinspection SimplifyStreamApiCallChains
+     */
+    public static Field[] findAllFieldsUsingFilter(Class<?> clazz, Predicate<Field> predicate) {
+        do {
+            var results = Arrays.stream(clazz.getDeclaredFields()).filter(predicate).collect(Collectors.toList());
+            if (!results.isEmpty()) return results.toArray(new Field[0]);
+        } while ((clazz = clazz.getSuperclass()) != null);
+        return new Field[0];
+    }
+
     public static Method findMethodUsingFilterIfExists(Class<?> clazz, Predicate<Method> predicate) {
         do {
             var results = Arrays.stream(clazz.getDeclaredMethods()).filter(predicate).findFirst();
+            if (results.isPresent()) return results.get();
+        } while ((clazz = clazz.getSuperclass()) != null);
+        return null;
+    }
+
+    public static Field findFieldUsingFilterIfExists(Class<?> clazz, Predicate<Field> predicate) {
+        do {
+            var results = Arrays.stream(clazz.getDeclaredFields()).filter(predicate).findFirst();
             if (results.isPresent()) return results.get();
         } while ((clazz = clazz.getSuperclass()) != null);
         return null;
@@ -71,9 +98,9 @@ public class ReflectionUtils {
         return Arrays.stream(cls.getFields()).filter(f -> type == f.getType()).findFirst().orElse(null);
     }
 
-    public static Object callMethod(Method getUserJid, Object fMessage, Object... args) {
+    public static Object callMethod(Method method, Object instance, Object... args) {
         try {
-            return getUserJid.invoke(fMessage, args);
+            return method.invoke(instance, args);
         } catch (Exception e) {
             return null;
         }

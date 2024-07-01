@@ -63,7 +63,7 @@ public class Others extends Feature {
         var proximity = prefs.getBoolean("proximity_audios", false);
         var showOnline = prefs.getBoolean("showonline", false);
         var floatingMenu = prefs.getBoolean("floatingmenu", false);
-        var filter_itens = prefs.getString("filter_itens", null);
+        var filter_items = prefs.getString("filter_items", null);
         var disable_defemojis = prefs.getBoolean("disable_defemojis", false);
         var autonext_status = prefs.getBoolean("autonext_status", false);
         var toast_viewed_status = prefs.getBoolean("toast_viewed_status", false);
@@ -93,9 +93,16 @@ public class Others extends Feature {
 
         propsBoolean.put(9051, true);
 
-        propsBoolean.put(6798, true); // show all status
+        propsBoolean.put(6798, true);  // show all status
+        propsBoolean.put(3575, true);  // auto play emojis settings
 
-        propsBoolean.put(5332, false);
+        propsBoolean.put(7589, true);  // Media select quality
+        propsBoolean.put(6972, false); // Media select quality
+        propsBoolean.put(5625, true);  // Enable option to autodelete channels media
+
+        propsBoolean.put(5332, true);  // Enable option to autodelete channels media
+
+
 
         if (metaai) {
             propsBoolean.put(8025, false);
@@ -108,10 +115,8 @@ public class Others extends Feature {
             Others.propsBoolean.put(2890, true);
         }
 
-
         propsInteger.put(8522, fbstyle);
         propsInteger.put(8521, fbstyle);
-
 
         hookProps();
 
@@ -122,8 +127,8 @@ public class Others extends Feature {
             XposedBridge.hookMethod(proximitySensorMethod, XC_MethodReplacement.DO_NOTHING);
         }
 
-        if (filter_itens != null) {
-            filterItens(filter_itens);
+        if (filter_items != null && prefs.getBoolean("custom_filters", true)) {
+            filterItems(filter_items);
         }
 
         if (disable_defemojis) {
@@ -138,10 +143,9 @@ public class Others extends Feature {
         if (audio_type > 0) {
             sendAudioType(audio_type);
         }
+
         customPlayBackSpeed();
         showOnline(showOnline);
-
-
     }
 
     private void customPlayBackSpeed() throws Exception {
@@ -157,7 +161,7 @@ public class Others extends Feature {
             }
         });
         var voicenoteClass = classLoader.loadClass("com.whatsapp.search.views.itemviews.VoiceNoteProfileAvatarView");
-        var method = ReflectionUtils.findAllMethodUsingFilter(voicenoteClass, method1 -> method1.getParameterCount() == 4 && method1.getParameterTypes()[0] == int.class && method1.getReturnType().equals(void.class));
+        var method = ReflectionUtils.findAllMethodsUsingFilter(voicenoteClass, method1 -> method1.getParameterCount() == 4 && method1.getParameterTypes()[0] == int.class && method1.getReturnType().equals(void.class));
         XposedBridge.hookMethod(method[method.length - 1], new XC_MethodHook() {
             @SuppressLint("SetTextI18n")
             @Override
@@ -272,8 +276,8 @@ public class Others extends Feature {
         XposedBridge.hookMethod(defEmojiClass, XC_MethodReplacement.returnConstant(null));
     }
 
-    private void filterItens(String filterItens) {
-        var itens = filterItens.split("\n");
+    private void filterItems(String filterItems) {
+        var itens = filterItems.split("\n");
         var idsFilter = new ArrayList<Integer>();
         for (String item : itens) {
             var id = Utils.getID(item, "id");

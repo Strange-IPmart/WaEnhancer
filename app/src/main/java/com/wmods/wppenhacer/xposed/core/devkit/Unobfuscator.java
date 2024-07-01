@@ -1,8 +1,10 @@
 package com.wmods.wppenhacer.xposed.core.devkit;
 
+import android.app.Activity;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.NinePatchDrawable;
 import android.net.Uri;
 import android.view.LayoutInflater;
@@ -126,6 +128,12 @@ public class Unobfuscator {
     public static String getMethodDescriptor(Method method) {
         if (method == null) return null;
         return method.getDeclaringClass().getName() + "->" + method.getName() + "(" + Arrays.stream(method.getParameterTypes()).map(Class::getName).collect(Collectors.joining(",")) + ")";
+    }
+
+
+    public static String getConstructorDescriptor(Constructor constructor) {
+        if (constructor == null) return null;
+        return constructor.getDeclaringClass().getName() + "->" + constructor.getName() + "(" + Arrays.stream(constructor.getParameterTypes()).map(Class::getName).collect(Collectors.joining(",")) + ")";
     }
 
     public static String getFieldDescriptor(Field field) {
@@ -926,7 +934,6 @@ public class Unobfuscator {
     public static Method loadGetStatusUserMethod(ClassLoader loader) throws Exception {
         return UnobfuscatorCache.getInstance().getMethod(loader, () -> {
             var id = UnobfuscatorCache.getInstance().getOfuscateIDString("last seen sun %s");
-            XposedBridge.log(Integer.toHexString(id));
             var result = dexkit.findMethod(new FindMethod().matcher(new MethodMatcher().addUsingNumber(id)));
             if (result.isEmpty()) throw new Exception("GetStatusUser method not found");
             return result.get(0).getMethodInstance(loader);
@@ -1406,7 +1413,7 @@ public class Unobfuscator {
     public static Method loadGroupCheckAdminMethod(ClassLoader loader) throws Exception {
         var clazz = findFirstClassUsingStrings(loader, StringMatchType.Contains, "[LidGroup]GroupParticipantsManager");
         var userJidClass = XposedHelpers.findClass("com.whatsapp.jid.UserJid", loader);
-        var methods = ReflectionUtils.findAllMethodUsingFilter(clazz, m -> m.getParameterCount() == 2 && m.getParameterTypes()[1].equals(userJidClass) && m.getReturnType().equals(boolean.class));
+        var methods = ReflectionUtils.findAllMethodsUsingFilter(clazz, m -> m.getParameterCount() == 2 && m.getParameterTypes()[1].equals(userJidClass) && m.getReturnType().equals(boolean.class));
         if (methods == null || methods.length == 0)
             throw new RuntimeException("GroupCheckAdmin method not found");
         return methods[methods.length - 1];
@@ -1632,6 +1639,52 @@ public class Unobfuscator {
             var clazz = findFirstClassUsingStrings(classLoader, StringMatchType.Contains, "NewsletterDataItem", "isMuteIndicatorEnabled");
             if (clazz == null) throw new RuntimeException("HeaderChannelItem class not found");
             return clazz;
+        });
+    }
+
+    public static Method loadTextStatusComposer(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> {
+            var method1 = Activity.class.getDeclaredMethod("getWindow");
+            var method2 = View.class.getDeclaredMethod("setBackground", Drawable.class);
+            var clazz = classLoader.loadClass("com.whatsapp.textstatuscomposer.TextStatusComposerActivity");
+            var field1 = clazz.getDeclaredField("A02");
+            var classData = dexkit.getClassData(clazz);
+            if (classData == null) throw new RuntimeException("TextStatusComposer class not found");
+            var methods = classData.findMethod(new FindMethod().matcher(new MethodMatcher()
+                    .addInvoke(DexSignUtil.getMethodDescriptor(method1))
+                    .addInvoke(DexSignUtil.getMethodDescriptor(method2))
+                    .addUsingField(DexSignUtil.getFieldDescriptor(field1))
+                    .modifiers(Modifier.PUBLIC | Modifier.STATIC)
+            ));
+            if (methods.isEmpty())
+                throw new RuntimeException("TextStatusComposer method not found");
+            return methods.get(0).getMethodInstance(classLoader);
+        });
+    }
+
+    public static Method loadTextStatusComposer2(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> {
+            Class<?> TextDataClass = classLoader.loadClass("com.whatsapp.TextData");
+            var clazz = classLoader.loadClass("com.whatsapp.textstatuscomposer.TextStatusComposerActivity");
+            var field1 = TextDataClass.getDeclaredField("fontStyle");
+            var field2 = TextDataClass.getDeclaredField("textColor");
+            var field3 = TextDataClass.getDeclaredField("backgroundColor");
+            var classData = dexkit.getClassData(clazz);
+            if (classData == null)
+                throw new RuntimeException("TextStatusComposer2 class not found");
+            var methods = dexkit.findMethod(new FindMethod().matcher(new MethodMatcher()
+                    .addUsingField(DexSignUtil.getFieldDescriptor(field1))
+                    .addUsingField(DexSignUtil.getFieldDescriptor(field2))
+                    .addUsingField(DexSignUtil.getFieldDescriptor(field3))
+                    .modifiers(Modifier.PUBLIC)
+            ));
+            for (var method : methods) {
+                var callers = method.getCallers();
+                if (callers.stream().anyMatch(methodData -> methodData.getDeclaredClassName().contains("TextStatusComposerActivity"))) {
+                    return method.getMethodInstance(classLoader);
+                }
+            }
+            throw new RuntimeException("TextStatusComposer2 method not found");
         });
     }
 }
