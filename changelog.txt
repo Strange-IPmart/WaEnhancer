@@ -1,2 +1,2 @@
-[TEXT STATUS]
-* Disabled TextStatusComposerActivityV2 to use Custom colors
+[Seen Tick]
+* Fix bug in WhatsApp version 2.24.13.xx
