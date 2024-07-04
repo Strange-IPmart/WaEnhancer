@@ -1,2 +1,3 @@
-[Seen Tick]
-* Fix bug in WhatsApp version 2.24.13.xx
+[WA ENHANCER]
+* Added Hebrew translation
+* updated translations
