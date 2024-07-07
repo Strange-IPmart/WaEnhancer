@@ -1,3 +1,8 @@
 [WA ENHANCER]
-* Added Hebrew translation
-* updated translations
+* Added function to disable version checking (This means you can use unsupported versions of WhatsApp, but use with caution, in case of bugs do not report errors)
+
+[WHATSAPP 2.24.13.71+]
+* Enable Sticker Suggestions (It's still not working well, maybe it's better in WhatsApp Beta) (WhatsApp -> Settings -> Conversations)
+* Enable Dialer in Call Fragment (WhatsApp -> Calls)
+* Enable Privacy Checkup (WhatsApp -> Settings -> Privacy)
+

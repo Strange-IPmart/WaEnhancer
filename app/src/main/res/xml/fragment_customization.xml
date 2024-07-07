@@ -123,6 +123,12 @@
             app:title="@string/new_context_menu_ui" />
 
         <rikka.material.preference.MaterialSwitchPreference
+            android:defaultValue="true"
+            app:key="animation_emojis"
+            app:summary="@string/animation_emojis_sum"
+            app:title="@string/animation_emojis" />
+
+        <rikka.material.preference.MaterialSwitchPreference
             app:key="bubble_color"
             app:summary="@string/change_blubble_color_sum"
             app:title="@string/change_bubble_colors" />
@@ -195,6 +201,10 @@
             app:summary="@string/enable_facebook_style_for_status_sum"
             app:title="@string/enable_facebook_style_for_status" />
 
+        <rikka.material.preference.MaterialSwitchPreference
+            android:summary="@string/vertical_status_sum"
+            app:key="verticalstatus"
+            app:title="@string/vertical_status" />
 
         <rikka.material.preference.MaterialSwitchPreference
             app:key="oldstatus"
