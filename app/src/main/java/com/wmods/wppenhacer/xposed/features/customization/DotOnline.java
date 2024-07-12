@@ -23,9 +23,6 @@ import com.wmods.wppenhacer.xposed.core.devkit.UnobfuscatorCache;
 import com.wmods.wppenhacer.xposed.utils.ReflectionUtils;
 import com.wmods.wppenhacer.xposed.utils.Utils;
 
-import java.util.HashMap;
-import java.util.concurrent.CompletableFuture;
-
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XSharedPreferences;
 import de.robv.android.xposed.XposedBridge;
@@ -33,7 +30,6 @@ import de.robv.android.xposed.XposedHelpers;
 
 public class DotOnline extends Feature {
 
-    public static HashMap<Object, View> views = new HashMap<>();
     private Object mStatusUser;
     private Object mInstancePresence;
 
@@ -55,8 +51,6 @@ public class DotOnline extends Feature {
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                 var view = (View) param.args[1];
                 var context = (Context) param.args[0];
-                views.remove(param.thisObject);
-                views.put(param.thisObject, view);
                 var content = (LinearLayout) view.findViewById(Utils.getID("conversations_row_content", "id"));
 
                 if (showOnlineText) {
@@ -114,6 +108,8 @@ public class DotOnline extends Feature {
         var sendPresenceMethod = Unobfuscator.loadSendPresenceMethod(classLoader);
         logDebug(Unobfuscator.getMethodDescriptor(sendPresenceMethod));
 
+        var absViewHolderClass = Unobfuscator.loadAbsViewHolder(classLoader);
+
 
         XposedBridge.hookAllConstructors(getStatusUser.getDeclaringClass(), new XC_MethodHook() {
             @Override
@@ -133,46 +129,42 @@ public class DotOnline extends Feature {
             @Override
             @SuppressLint("ResourceType")
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                CompletableFuture.runAsync(() -> {
-                    try {
-                        var viewHolder = field1.get(field1.getDeclaringClass().cast(param.thisObject));
-                        var object = param.args[0];
-                        var view = (View) views.get(viewHolder);
-                        ImageView csDot = showOnlineIcon ? view.findViewById(0x7FFF0003).findViewById(0x7FFF0001) : null;
-                        if (showOnlineIcon) {
-                            csDot.setVisibility(View.INVISIBLE);
-                        }
-                        TextView lastSeenText = showOnlineText ? view.findViewById(0x7FFF0002) : null;
-                        if (showOnlineText) {
-                            lastSeenText.setVisibility(View.INVISIBLE); // Hide last seen time initially
-                        }
-                        var jidFiled = Unobfuscator.getFieldByExtendType(object.getClass(), XposedHelpers.findClass("com.whatsapp.jid.Jid", classLoader));
-                        var jidObject = jidFiled.get(object);
-                        var jid = WppCore.getRawString(jidObject);
-                        if (WppCore.isGroup(jid)) return;
-                        Class<?> JidClass = classLoader.loadClass("com.whatsapp.jid.Jid");
-                        var method = ReflectionUtils.findMethodUsingFilter(sendPresenceMethod.getDeclaringClass(), method1 -> method1.getParameterCount() == 2 && JidClass.isAssignableFrom(method1.getParameterTypes()[0]) && method1.getParameterTypes()[1] == sendPresenceMethod.getDeclaringClass());
-                        var instance = ReflectionUtils.callMethod(method, null, jidObject, mInstancePresence); //XposedHelpers.newInstance(clazz, new Object[]{null, null});
-                        sendPresenceMethod.invoke(null, jidObject, instance, mInstancePresence);
-                        Thread.sleep(1000);
-                        var status = (String) getStatusUser.invoke(mStatusUser, object);
-                        if (!TextUtils.isEmpty(status) && status.trim().equals(UnobfuscatorCache.getInstance().getString("online"))) {
-                            if (csDot != null) {
-                                csDot.post(() -> csDot.setVisibility(View.VISIBLE));
-                            }
-                        }
-                        if (!TextUtils.isEmpty(status)) {
-                            if (lastSeenText != null) {
-                                lastSeenText.post(() -> {
-                                    lastSeenText.setText(status);
-                                    lastSeenText.setVisibility(View.VISIBLE);
-                                });
-                            }
-                        }
-                    } catch (Exception e) {
-                        logDebug(e);
+                var viewHolder = field1.get(param.thisObject);
+                var object = param.args[0];
+                var viewField = ReflectionUtils.findFieldUsingFilter(absViewHolderClass, field -> field.getType() == View.class);
+                var view = (View) viewField.get(viewHolder);
+                var getAdapterPositionMethod = ReflectionUtils.findMethodUsingFilter(absViewHolderClass, method -> method.getParameterCount() == 0 && method.getReturnType() == int.class);
+                var position = (int) ReflectionUtils.callMethod(getAdapterPositionMethod, viewHolder);
+                ImageView csDot = showOnlineIcon ? view.findViewById(0x7FFF0003).findViewById(0x7FFF0001) : null;
+                if (showOnlineIcon) {
+                    csDot.setVisibility(View.INVISIBLE);
+                }
+                TextView lastSeenText = showOnlineText ? view.findViewById(0x7FFF0002) : null;
+                if (showOnlineText) {
+                    lastSeenText.setVisibility(View.INVISIBLE); // Hide last seen time initially
+                }
+                var jidFiled = Unobfuscator.getFieldByExtendType(object.getClass(), XposedHelpers.findClass("com.whatsapp.jid.Jid", classLoader));
+                var jidObject = jidFiled.get(object);
+                var jid = WppCore.getRawString(jidObject);
+                if (WppCore.isGroup(jid)) return;
+                Class<?> JidClass = classLoader.loadClass("com.whatsapp.jid.Jid");
+                var method = ReflectionUtils.findMethodUsingFilter(sendPresenceMethod.getDeclaringClass(), method1 -> method1.getParameterCount() == 2 && JidClass.isAssignableFrom(method1.getParameterTypes()[0]) && method1.getParameterTypes()[1] == sendPresenceMethod.getDeclaringClass());
+                var instance = ReflectionUtils.callMethod(method, null, jidObject, mInstancePresence); //XposedHelpers.newInstance(clazz, new Object[]{null, null});
+                sendPresenceMethod.invoke(null, jidObject, instance, mInstancePresence);
+                var status = (String) getStatusUser.invoke(mStatusUser, object);
+                var currentPosition = (int) ReflectionUtils.callMethod(getAdapterPositionMethod, viewHolder);
+                if (currentPosition != position) return;
+                if (!TextUtils.isEmpty(status) && status.trim().equals(UnobfuscatorCache.getInstance().getString("online"))) {
+                    if (csDot != null) {
+                        csDot.setVisibility(View.VISIBLE);
                     }
-                }, Utils.getExecutorCachedService());
+                }
+                if (!TextUtils.isEmpty(status)) {
+                    if (lastSeenText != null) {
+                        lastSeenText.setText(status);
+                        lastSeenText.setVisibility(View.VISIBLE);
+                    }
+                }
             }
         });
     }

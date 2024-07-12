@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_desc">Un módulo LSposed para personalizar tu WhatsApp</string>
+    <string name="app_desc">Un módulo LSPosed para personalizar tu WhatsApp</string>
     <string name="antirevoke">Anti-Eliminar Mensajes</string>
     <string name="antirevoke_sum">Cuando esté activo, los mensajes no se eliminarán.</string>
     <string name="ghostmode">Ocultar \"escribiendo\"</string>
@@ -304,10 +304,35 @@
     <string name="click_times">Haz clic 5 veces en el título de WhatsApp</string>
     <string name="hold_title">Mantenga presionado el título de WhatsApp</string>
     <string name="read_all_mark_as_read">Leer todo (marcar como leído)</string>
-    <string name="enable_copy_status">Enable Copy Status</string>
-    <string name="enable_copy_status_sum">Activates the possibility of copying the description and caption of statuses by holding on them</string>
-    <string name="animation_emojis">Animation Emojis</string>
-    <string name="animation_emojis_sum">Activate animated emojis (This creates large emojis in conversations)</string>
-    <string name="vertical_status">Vertical Status</string>
-    <string name="vertical_status_sum">Show status in vertical mode on Updates tab</string>
+    <string name="enable_copy_status">Habilitar copiar texto de los estados</string>
+    <string name="enable_copy_status_sum">Activa la posibilidad de copiar la descripción y texto de los estados manteniéndo presionado en ellos</string>
+    <string name="animation_emojis">Emojis Animados</string>
+    <string name="animation_emojis_sum">Activar emojis animados (esto crea grandes emojis en las conversaciones)</string>
+    <string name="vertical_status">Estados verticales</string>
+    <string name="vertical_status_sum">Mostrar estados en modo vertical en la pestaña Novedades</string>
+    <string name="disable_version_check">Desactivar comprobación de versiones</string>
+    <string name="disable_version_check_sum">Deshabilita la comprobación de la versión soportada de WhatsApp (los bugs pueden ocurrir en versiones no soportadas que no se arreglarán pronto)</string>
+    <string name="invalid_zip_file">Archivo zip inválido</string>
+    <string name="theme_imported_successfully">Tema importado correctamente</string>
+    <string name="new_theme_name">Nuevo nombre del tema</string>
+    <string name="create">Crear</string>
+    <string name="storage_permission">Permiso de almacenamiento</string>
+    <string name="permission_storage">¿Permitir a Wa Enhancer acceder a tu almacenamiento externo? Es necesario en Android 11+</string>
+    <string name="allow">Permitir</string>
+    <string name="deny">Denegar</string>
+    <string name="saved">Guardado</string>
+    <string name="exported">Exportado</string>
+    <string name="enter_image_file_name">Introduce el nombre de la imagen</string>
+    <string name="error_image_name">El nombre debe terminar con .png</string>
+    <string name="imported_as">"Importado como "</string>
+    <string name="save">Guardar</string>
+    <string name="import_image">Importar imagen</string>
+    <string name="export_as_zip">Exportar como zip</string>
+    <string name="clear">Limpiar</string>
+    <string name="exit">Salir</string>
+    <string name="create_new_theme">Crear nuevo tema</string>
+    <string name="import_theme">Importar tema</string>
+    <string name="theme_manager">Gestor de temas</string>
+    <string name="manage_theme_sum">Administrar temas usando CSS para WhatsApp</string>
+    <string name="grant_permission">Please, grant permissions to read images and read external storage</string>
 </resources>
