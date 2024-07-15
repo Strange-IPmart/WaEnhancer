@@ -1,11 +1,3 @@
-[CUSTOM CSS]
-* Fixed lags when using CSS with images
-
-[WALLAPER]
-* Fixed the lag when scrolling through contacts (I believe that now we will no longer have lag problems with this)
-
 [THEME MANAGER]
-* Add Default Theme
-
-[WA ENHANCER]
-* Update translations
+Added the ability to modify wallpaper and colors through the Theme Editor
+Read docs for mores details (https://github.com/Dev4Mod/WaEnhancer/Theme.md)
