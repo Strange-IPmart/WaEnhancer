@@ -96,7 +96,7 @@ public class HomeFragment extends BaseFragment {
         binding.statusTitle3.setText(R.string.business_in_background);
         var version = intent.getStringExtra("VERSION");
         var supported_list = Arrays.asList(context.getResources().getStringArray(R.array.supported_versions_business));
-        if (supported_list.contains(version)) {
+        if (version != null && supported_list.stream().anyMatch(s -> version.startsWith(s.replace(".xx", "")))) {
             binding.statusSummary3.setText(getString(R.string.version_s, version));
             binding.status3.setCardBackgroundColor(context.getColor(R.color.material_state_green));
         } else {
@@ -114,7 +114,7 @@ public class HomeFragment extends BaseFragment {
         var version = intent.getStringExtra("VERSION");
         var supported_list = Arrays.asList(context.getResources().getStringArray(R.array.supported_versions_wpp));
 
-        if (supported_list.contains(version)) {
+        if (version != null && supported_list.stream().anyMatch(s -> version.startsWith(s.replace(".xx", "")))) {
             binding.statusSummary1.setText(getString(R.string.version_s, version));
             binding.status2.setCardBackgroundColor(context.getColor(R.color.material_state_green));
         } else {
@@ -202,11 +202,10 @@ public class HomeFragment extends BaseFragment {
                         } else if (type.equals(Long.class.getSimpleName())) {
                             prefs.edit().putLong(keyName, (long) value).apply();
                         } else if (type.equals(Double.class.getSimpleName())) {
-                            prefs.edit().putFloat(keyName, ((Double) value).floatValue()).apply();
+                            prefs.edit().putFloat(keyName, Float.parseFloat(String.valueOf(value))).apply();
                         } else if (type.equals(Float.class.getSimpleName())) {
-                            prefs.edit().putFloat(keyName, ((Double) value).floatValue()).apply();
+                            prefs.edit().putFloat(keyName, Float.parseFloat(String.valueOf(value))).apply();
                         }
-
                     }
                 }
                 Toast.makeText(context, context.getString(R.string.configs_imported), Toast.LENGTH_SHORT).show();

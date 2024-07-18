@@ -33,8 +33,8 @@
 
     <string-array name="fbstyle_entries">
         <item>@string/disabled</item>
-        <item>One Row</item>
-        <item>Two Row</item>
+        <item>@string/one_row</item>
+        <item>@string/two_row</item>
     </string-array>
 
     <string-array name="fbstyle_values">
@@ -115,16 +115,9 @@
         <item>2</item>
     </string-array>
     <string-array name="supported_versions_wpp">
-        <item>2.24.12.71</item>
-        <item>2.24.12.73</item>
-        <item>2.24.12.78</item>
-        <item>2.24.13.71</item>
-        <item>2.24.13.72</item>
-        <item>2.24.13.73</item>
-        <item>2.24.13.74</item>
-        <item>2.24.13.75</item>
-        <item>2.24.13.77</item>
-        <item>2.24.13.78</item>
+        <item>2.24.12.xx</item>
+        <item>2.24.13.xx</item>
+        <item>2.24.14.xx</item>
     </string-array>
     <string-array name="supported_versions_business">
         <item>2.24.11.83</item>
@@ -145,5 +138,30 @@
         <item>@string/audio_note</item>
         <item>@string/voice_note</item>
     </string-array>
-
+    <string-array name="animations_values">
+        <item>default</item>
+        <item>fade_in</item>
+        <item>fade_out</item>
+        <item>scale_up</item>
+        <item>slide_up</item>
+        <item>slide_right_to_left</item>
+        <item>rotate</item>
+        <item>bounce</item>
+        <item>shrink</item>
+        <item>flip</item>
+        <item>hyperspace_out</item>
+    </string-array>
+    <string-array name="animations_names">
+        <item>Default</item>
+        <item>Fade in</item>
+        <item>Fade out</item>
+        <item>Scale up</item>
+        <item>Slide up</item>
+        <item>Slide right to left</item>
+        <item>Rotate</item>
+        <item>Bounce</item>
+        <item>Shrink</item>
+        <item>Flip</item>
+        <item>Hyperspace out</item>
+    </string-array>
 </resources>

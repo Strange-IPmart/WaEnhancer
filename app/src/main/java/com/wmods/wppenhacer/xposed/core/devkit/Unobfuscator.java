@@ -940,10 +940,10 @@ public class Unobfuscator {
         });
     }
 
-    public static Method loadGetStatusUserMethod(ClassLoader loader) throws Exception {
+    public static Method loadStatusUserMethod(ClassLoader loader) throws Exception {
         return UnobfuscatorCache.getInstance().getMethod(loader, () -> {
             var id = UnobfuscatorCache.getInstance().getOfuscateIDString("last seen sun %s");
-            var result = dexkit.findMethod(new FindMethod().matcher(new MethodMatcher().addUsingNumber(id)));
+            var result = dexkit.findMethod(new FindMethod().matcher(new MethodMatcher().addUsingNumber(id).paramCount(1)));
             if (result.isEmpty()) throw new Exception("GetStatusUser method not found");
             return result.get(0).getMethodInstance(loader);
         });
@@ -1656,18 +1656,18 @@ public class Unobfuscator {
             var method1 = Activity.class.getDeclaredMethod("getWindow");
             var method2 = View.class.getDeclaredMethod("setBackground", Drawable.class);
             var clazz = classLoader.loadClass("com.whatsapp.textstatuscomposer.TextStatusComposerActivity");
-            var field1 = clazz.getDeclaredField("A02");
+            var fieldInt = ReflectionUtils.findFieldUsingFilter(clazz, field -> field.getType() == int.class);
             var classData = dexkit.getClassData(clazz);
             if (classData == null) throw new RuntimeException("TextStatusComposer class not found");
             var methods = classData.findMethod(new FindMethod().matcher(new MethodMatcher()
                     .addInvoke(DexSignUtil.getMethodDescriptor(method1))
                     .addInvoke(DexSignUtil.getMethodDescriptor(method2))
-                    .addUsingField(DexSignUtil.getFieldDescriptor(field1))
+                    .addUsingField(DexSignUtil.getFieldDescriptor(fieldInt))
                     .modifiers(Modifier.PUBLIC | Modifier.STATIC)
             ));
             if (methods.isEmpty())
                 throw new RuntimeException("TextStatusComposer method not found");
-            return methods.get(0).getMethodInstance(classLoader);
+            return methods.get(methods.size() - 1).getMethodInstance(classLoader);
         });
     }
 

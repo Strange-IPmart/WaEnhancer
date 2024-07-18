@@ -103,7 +103,7 @@ public class DotOnline extends Feature {
         logDebug(Unobfuscator.getMethodDescriptor(onChangeStatus));
         var field1 = Unobfuscator.loadViewHolderField1(classLoader);
         logDebug(Unobfuscator.getFieldDescriptor(field1));
-        var getStatusUser = Unobfuscator.loadGetStatusUserMethod(classLoader);
+        var getStatusUser = Unobfuscator.loadStatusUserMethod(classLoader);
         logDebug(Unobfuscator.getMethodDescriptor(getStatusUser));
         var sendPresenceMethod = Unobfuscator.loadSendPresenceMethod(classLoader);
         logDebug(Unobfuscator.getMethodDescriptor(sendPresenceMethod));
@@ -133,6 +133,7 @@ public class DotOnline extends Feature {
                 var object = param.args[0];
                 var viewField = ReflectionUtils.findFieldUsingFilter(absViewHolderClass, field -> field.getType() == View.class);
                 var view = (View) viewField.get(viewHolder);
+
                 var getAdapterPositionMethod = ReflectionUtils.findMethodUsingFilter(absViewHolderClass, method -> method.getParameterCount() == 0 && method.getReturnType() == int.class);
                 var position = (int) ReflectionUtils.callMethod(getAdapterPositionMethod, viewHolder);
                 ImageView csDot = showOnlineIcon ? view.findViewById(0x7FFF0003).findViewById(0x7FFF0001) : null;
