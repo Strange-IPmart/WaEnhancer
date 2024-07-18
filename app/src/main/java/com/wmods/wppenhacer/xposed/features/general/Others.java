@@ -5,14 +5,17 @@ import android.app.Activity;
 import android.os.BaseBundle;
 import android.os.Message;
 import android.text.TextUtils;
+import android.view.GestureDetector;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
+import com.wmods.wppenhacer.listeners.DoubleTapListener;
 import com.wmods.wppenhacer.xposed.core.Feature;
 import com.wmods.wppenhacer.xposed.core.WppCore;
 import com.wmods.wppenhacer.xposed.core.components.AlertDialogWpp;
@@ -160,6 +163,59 @@ public class Others extends Feature {
 
         animationList();
 
+        stampCopiedMessage();
+
+        doubleTapReaction();
+
+    }
+
+    private void doubleTapReaction() throws Exception {
+
+        var bubbleMethod = Unobfuscator.loadAntiRevokeBubbleMethod(classLoader);
+        logDebug(Unobfuscator.getMethodDescriptor(bubbleMethod));
+
+        XposedBridge.hookMethod(bubbleMethod, new XC_MethodHook() {
+            @SuppressLint("ClickableViewAccessibility")
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                var viewGroup = (View) param.thisObject;
+                if (viewGroup == null) return;
+                var gestureDetector = new GestureDetector(viewGroup.getContext(), new DoubleTapListener(() -> {
+                    var reactionView = (ViewGroup) viewGroup.findViewById(Utils.getID("reactions_bubble_layout", "id"));
+                    if (reactionView != null && reactionView.getVisibility() == View.VISIBLE) {
+                        for (int i = 0; i < reactionView.getChildCount(); i++) {
+                            if (reactionView.getChildAt(i) instanceof TextView textView) {
+                                if (textView.getText().toString().contains("👍")) {
+                                    WppCore.sendReaction("", param.args[2]);
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                    WppCore.sendReaction("👍", param.args[2]);
+                }));
+                viewGroup.setOnTouchListener((v, event) -> gestureDetector.onTouchEvent(event));
+            }
+        });
+    }
+
+    private void stampCopiedMessage() throws Exception {
+        if (!prefs.getBoolean("stamp_copied_message", false)) return;
+
+        var copiedMessage = Unobfuscator.loadCopiedMessageMethod(classLoader);
+
+        XposedBridge.hookMethod(copiedMessage, new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                var Collection = (java.util.Collection) param.args[param.args.length - 1];
+                param.args[param.args.length - 1] = new ArrayList<Object>(Collection) {
+                    @Override
+                    public int size() {
+                        return 1;
+                    }
+                };
+            }
+        });
     }
 
     private void animationList() throws Exception {
