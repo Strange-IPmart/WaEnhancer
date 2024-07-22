@@ -101,6 +101,7 @@ public class Others extends Feature {
 
         propsBoolean.put(6798, true);  // show all status
         propsBoolean.put(3575, animationEmojis);  // auto play emojis settings
+        propsBoolean.put(9757, animationEmojis);  // auto play emojis settings
 
         propsBoolean.put(7589, true);  // Media select quality
         propsBoolean.put(6972, false); // Media select quality
@@ -171,6 +172,10 @@ public class Others extends Feature {
 
     private void doubleTapReaction() throws Exception {
 
+        if (!prefs.getBoolean("doubletap2like", false)) return;
+
+        var emoji = prefs.getString("doubletap2like_emoji", "👍");
+
         var bubbleMethod = Unobfuscator.loadAntiRevokeBubbleMethod(classLoader);
         logDebug(Unobfuscator.getMethodDescriptor(bubbleMethod));
 
@@ -185,14 +190,14 @@ public class Others extends Feature {
                     if (reactionView != null && reactionView.getVisibility() == View.VISIBLE) {
                         for (int i = 0; i < reactionView.getChildCount(); i++) {
                             if (reactionView.getChildAt(i) instanceof TextView textView) {
-                                if (textView.getText().toString().contains("👍")) {
+                                if (textView.getText().toString().contains(emoji)) {
                                     WppCore.sendReaction("", param.args[2]);
                                     return;
                                 }
                             }
                         }
                     }
-                    WppCore.sendReaction("👍", param.args[2]);
+                    WppCore.sendReaction(emoji, param.args[2]);
                 }));
                 viewGroup.setOnTouchListener((v, event) -> gestureDetector.onTouchEvent(event));
             }
@@ -236,12 +241,10 @@ public class Others extends Feature {
                 var view = (View) viewField.get(viewHolder);
                 if (!Objects.equals(animation, "default")) {
                     view.startAnimation(AnimationUtil.getAnimation(animation));
-                } else {
-                    if (properties.containsKey("home_list_animation")) {
-                        var animation = AnimationUtil.getAnimation(properties.getProperty("home_list_animation"));
-                        if (animation != null) {
-                            view.startAnimation(animation);
-                        }
+                } else if (properties.containsKey("home_list_animation")) {
+                    var animation = AnimationUtil.getAnimation(properties.getProperty("home_list_animation"));
+                    if (animation != null) {
+                        view.startAnimation(animation);
                     }
                 }
             }

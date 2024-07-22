@@ -1,20 +1,16 @@
-[SEPARATE GROUP]
-* Fixed the group count that did not consider community groups
-
-[HIDE TAB]
-* Fixed error when swiping on a hidden tab
-
-[TOAST VIEWER]
-* Added to display the phone number in groups if the person does not have the person saved in contacts
-
-[DATABASE]
-* Fixed unexpected closing error
-
-[REMOVE STAMP FROM COPIED MESSAGES]
-* Add function to remove date and name from copied messages
-
-[SEND REACTION]
-* Added double click to react with 👍 (also removes)
+[MEDIA PREVIEW
+* Fixed bug that opened incorrect media
 
 [WA ENHANCER]
-* Update translations
+* Various changes related to storage access permission. (Custom CSS, Wallpaper, Download)
+
+[DOWNLOAD MEDIA]
+* Removed the option to select the download location (Due to Android restrictions)
+* Downloads will be stored in the folder Download -> Wa Enhancer -> WhatsApp (/sdcard/Download/Wa Enhancer/WhatsApp/)
+
+[DOUBLE TAP TO REACTION]
+* Added the possibility to change the emoji
+
+[SEND BLUE TICK]
+* Fixed bug of not sending the tick in WA 2.24.14.xx
+

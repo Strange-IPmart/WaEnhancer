@@ -150,7 +150,6 @@
     <string name="default_color">Farbe #00000000 als Standardfarbe setzen</string>
     <string name="enable_confirmation_to_send_sticker">Bestätigung vor dem Senden des Stickers</string>
     <string name="enable_confirmation_to_send_sticker_sum">Eine Bestätigung wird vor dem Senden des Stickers angezeigt</string>
-    <string name="local_download">Lokaler Download</string>
     <string name="increase_video_size_limit">Limit für Videogröße erhöhen</string>
     <string name="increase_video_size_limit_sum">Videogrößenlimit auf 90MB erhöhen</string>
     <string name="send_video_in_real_resolution">Videos in Originalauflösung senden</string>
@@ -335,12 +334,18 @@
     <string name="theme_manager">Design Manager</string>
     <string name="manage_theme_sum">Themes mit CSS für WhatsApp verwalten</string>
     <string name="grant_permission">Bitte erteilen Sie die Berechtigung zum Lesen des externen Speichers</string>
-    <string name="one_row">One Row</string>
-    <string name="two_row">Two row</string>
-    <string name="expiration">(Expiration: %s)</string>
-    <string name="deleted_a_message_in_group">%1$s deleted a message in group %2$s</string>
-    <string name="list_animations_home_screen">List animations (Home Screen)</string>
-    <string name="list_animations_home_screen_sum">Add animations when swiping the chat list</string>
-    <string name="stamp_copied_messages">Remove Stamp from Copied Messages</string>
-    <string name="stamp_copied_messages_sum">Removes name and date when copying more than one message</string>
+    <string name="one_row">Eine Reihe</string>
+    <string name="two_row">Zwei Reihen</string>
+    <string name="expiration">Ablauf: %s</string>
+    <string name="deleted_a_message_in_group">%1$s hat eine Nachricht in der Gruppe %2$s gelöscht</string>
+    <string name="list_animations_home_screen">Animationsmöglichkeiten (Startbildschirm)</string>
+    <string name="list_animations_home_screen_sum">Animation beim Wischen der Chat-Liste hinzufügen</string>
+    <string name="stamp_copied_messages">Kopieren von Nachrichten</string>
+    <string name="stamp_copied_messages_sum">Entfernt Namen und Datum beim Kopieren von mehr als einer Nachricht</string>
+    <string name="invalid_folder">The invalid folder has been selected. Please choose the WaEnhancer folder</string>
+    <string name="uri_permission">To use custom themes you need to select the \"WaEnhancer\" folder in \"Download\"</string>
+    <string name="double_click_to_react">Enable Double Click to React</string>
+    <string name="double_click_to_like_sum">Activates the possibility of double-clicking on the message to react it</string>
+    <string name="custom_reaction">Custom Reaction</string>
+    <string name="custom_reaction_sum">Select which reaction will be sent when double clicking on the message</string>
 </resources>
