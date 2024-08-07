@@ -16,7 +16,6 @@ import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.shapes.RectShape;
-import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -35,7 +34,6 @@ import com.wmods.wppenhacer.preference.ThemePreference;
 import com.wmods.wppenhacer.utils.IColors;
 import com.wmods.wppenhacer.xposed.core.Feature;
 import com.wmods.wppenhacer.xposed.core.WppCore;
-import com.wmods.wppenhacer.xposed.core.devkit.Unobfuscator;
 import com.wmods.wppenhacer.xposed.utils.ReflectionUtils;
 import com.wmods.wppenhacer.xposed.utils.Utils;
 
@@ -67,6 +65,7 @@ import cz.vutbr.web.css.TermNumeric;
 import cz.vutbr.web.css.TermURI;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XSharedPreferences;
+import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 
 public class CustomView extends Feature {
@@ -79,43 +78,6 @@ public class CustomView extends Feature {
     public CustomView(@NonNull ClassLoader loader, @NonNull XSharedPreferences preferences) {
         super(loader, preferences);
     }
-
-
-    private void hookDrawableViews() {
-        XposedHelpers.findAndHookMethod(View.class, "setBackground", Drawable.class, new XC_MethodHook() {
-            @Override
-            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                var view = (View) param.thisObject;
-                var newDrawable = (Drawable) param.args[0];
-                var hookedBackground = XposedHelpers.getAdditionalInstanceField(view, "mHookedBackground");
-                if (Unobfuscator.isCalledFromClass(CustomView.class)) {
-                    if (hookedBackground == null || view.getBackground() != newDrawable) {
-                        XposedHelpers.setAdditionalInstanceField(view, "mHookedBackground", newDrawable);
-                        return;
-                    }
-                } else if (hookedBackground == null) return;
-                param.setResult(null);
-            }
-        });
-
-        XposedHelpers.findAndHookMethod(ImageView.class, "setImageDrawable", Drawable.class, new XC_MethodHook() {
-            @Override
-            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                var view = (ImageView) param.thisObject;
-                var newDrawable = (Drawable) param.args[0];
-                var mHookedDrawable = XposedHelpers.getAdditionalInstanceField(view, "mHookedDrawable");
-                if (Unobfuscator.isCalledFromClass(CustomView.class)) {
-                    if (mHookedDrawable == null || view.getDrawable() != newDrawable) {
-                        XposedHelpers.setAdditionalInstanceField(view, "mHookedDrawable", newDrawable);
-                        return;
-                    }
-                } else if (mHookedDrawable == null) return;
-                param.setResult(null);
-            }
-        });
-
-    }
-
 
     @Override
     public void doHook() throws Throwable {
@@ -131,7 +93,6 @@ public class CustomView extends Feature {
         themeDir = new File(ThemePreference.rootDirectory, folder_theme);
         filter_itens += "\n" + custom_css;
         cacheImages = new DrawableCache(Utils.getApplication(), 100 * 1024 * 1024);
-
         var sheet = CSSFactory.parseString(filter_itens, new URL("https://base.url/"));
 
         XposedHelpers.findAndHookMethod(Activity.class, "onCreate", Bundle.class, new XC_MethodHook() {
@@ -145,6 +106,40 @@ public class CustomView extends Feature {
 
     }
 
+    private void hookDrawableViews() {
+        XposedHelpers.findAndHookMethod(View.class, "setBackground", Drawable.class, new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                var view = (View) param.thisObject;
+                var newDrawable = (Drawable) param.args[0];
+                var hookedBackground = XposedHelpers.getAdditionalInstanceField(view, "mHookedBackground");
+                if (ReflectionUtils.isCalledFromClass(CustomView.class)) {
+                    if (hookedBackground == null || view.getBackground() != newDrawable) {
+                        XposedHelpers.setAdditionalInstanceField(view, "mHookedBackground", newDrawable);
+                        return;
+                    }
+                } else if (hookedBackground == null) return;
+                param.setResult(null);
+            }
+        });
+
+        XposedHelpers.findAndHookMethod(ImageView.class, "setImageDrawable", Drawable.class, new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                var view = (ImageView) param.thisObject;
+                var newDrawable = (Drawable) param.args[0];
+                var mHookedDrawable = XposedHelpers.getAdditionalInstanceField(view, "mHookedDrawable");
+                if (ReflectionUtils.isCalledFromClass(CustomView.class)) {
+                    if (mHookedDrawable == null || view.getDrawable() != newDrawable) {
+                        XposedHelpers.setAdditionalInstanceField(view, "mHookedDrawable", newDrawable);
+                        return;
+                    }
+                } else if (mHookedDrawable == null) return;
+                param.setResult(null);
+            }
+        });
+
+    }
 
 
     private void registerCssRules(Activity activity, ViewGroup currenView, StyleSheet sheet) {
@@ -598,67 +593,31 @@ public class CustomView extends Feature {
         }
 
         private Drawable loadDrawableFromFile(String filePath, int reqWidth, int reqHeight) {
-
-            File file = new File(filePath);
-
-            var bitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
-            var newHeight = reqHeight < 10 ? bitmap.getHeight() : Math.min(bitmap.getHeight(), reqHeight);
-            var newWidth = reqWidth < 10 ? bitmap.getWidth() : Math.min(bitmap.getWidth(), reqWidth);
-            bitmap = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true);
-            return new BitmapDrawable(context.getResources(), bitmap);
-        }
-
-        private Drawable loadDrawableFromUri(Uri uri, int reqWidth, int reqHeight) {
             try {
-                var inputStream = context.getContentResolver().openInputStream(uri);
-                var bitmap = BitmapFactory.decodeStream(inputStream);
+                File file = new File(filePath);
+                Bitmap bitmap;
+                if (!file.canRead()) {
+                    var parcelFile = WppCore.getClientBridge().openFile(filePath, false);
+                    bitmap = BitmapFactory.decodeStream(new FileInputStream(parcelFile.getFileDescriptor()));
+                } else {
+                    bitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
+                }
                 var newHeight = reqHeight < 10 ? bitmap.getHeight() : Math.min(bitmap.getHeight(), reqHeight);
                 var newWidth = reqWidth < 10 ? bitmap.getWidth() : Math.min(bitmap.getWidth(), reqWidth);
                 bitmap = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true);
                 return new BitmapDrawable(context.getResources(), bitmap);
             } catch (Exception e) {
+                XposedBridge.log(e);
                 return null;
             }
         }
 
+
         @Nullable
         public Drawable getDrawable(String filePath, int width, int height) {
             File file = filePath.startsWith("/") ? new File(filePath) : new File(themeDir, filePath);
-            var wae = WppCore.getPrivString("folder_wae", null);
 
-            if (wae != null && !filePath.startsWith("/")) {
-                var uriFile = chacheUris.get(filePath);
-                if (uriFile == null) {
-                    var themes = DocumentFile.fromTreeUri(context, Uri.parse(wae)).findFile("themes");
-                    if (themes == null) return null;
-                    var theme = themes.findFile(themeDir.getName());
-                    if (theme == null) return null;
-                    uriFile = theme.findFile(file.getName());
-                    if (uriFile == null) return null;
-                    chacheUris.put(filePath, uriFile);
-                }
-                String key = uriFile.getUri().toString();
-                long lastModified = uriFile.lastModified();
-
-                CachedDrawable cachedDrawable = drawableCache.get(key);
-                if (cachedDrawable != null && cachedDrawable.lastModified == lastModified) {
-                    return cachedDrawable.drawable;
-                }
-                Drawable cachedDrawableFromFile = loadDrawableFromCache(key, lastModified);
-                if (cachedDrawableFromFile != null) {
-                    cachedDrawable = new CachedDrawable(cachedDrawableFromFile, lastModified);
-                    drawableCache.put(key, cachedDrawable);
-                    return cachedDrawableFromFile;
-                }
-                Drawable drawable = loadDrawableFromUri(uriFile.getUri(), width, height);
-                saveDrawableToCache(key, (BitmapDrawable) drawable, lastModified);
-                cachedDrawable = new CachedDrawable(drawable, lastModified);
-                drawableCache.put(key, cachedDrawable);
-                return drawable;
-            }
-
-
-            if (!file.exists() || !file.canRead()) {
+            if (!file.exists()) {
                 return null;
             }
             String key = file.getAbsolutePath();
@@ -674,6 +633,7 @@ public class CustomView extends Feature {
                 return cachedDrawableFromFile;
             }
             Drawable drawable = loadDrawableFromFile(key, width, height);
+            if (drawable == null) return null;
             saveDrawableToCache(key, (BitmapDrawable) drawable, lastModified);
             cachedDrawable = new CachedDrawable(drawable, lastModified);
             drawableCache.put(key, cachedDrawable);

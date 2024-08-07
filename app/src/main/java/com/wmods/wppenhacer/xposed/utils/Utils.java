@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.MediaScannerConnection;
+import android.os.Binder;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.DisplayMetrics;
@@ -18,13 +19,13 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 
 import com.wmods.wppenhacer.App;
+import com.wmods.wppenhacer.WppXposed;
 import com.wmods.wppenhacer.xposed.core.FeatureLoader;
 import com.wmods.wppenhacer.xposed.core.WppCore;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -90,10 +91,15 @@ public class Utils {
         return new SimpleDateFormat("hh:mm:ss a", Locale.ENGLISH).format(new Date(timestamp));
     }
 
+    @SuppressLint("SdCardPath")
     public static String getDestination(String name) {
-        var waFolder = new File(App.getWaEnhancerFolder(), "WhatsApp");
+        var folder = WppXposed.getPref().getString("download_local", "/sdcard/Download");
+        var waFolder = new File(folder, "WhatsApp");
         var filePath = new File(waFolder, name);
-        if (!filePath.exists()) filePath.mkdirs();
+        try {
+            WppCore.getClientBridge().createDir(filePath.getAbsolutePath());
+        } catch (Exception ignored) {
+        }
         return filePath.getAbsolutePath() + "/";
     }
 
@@ -101,7 +107,8 @@ public class Utils {
         if (srcFile == null || !srcFile.exists()) return "File not found or is null";
 
         try (FileInputStream in = new FileInputStream(srcFile);
-             FileOutputStream out = new FileOutputStream(destFile)) {
+             var parcelFileDescriptor = WppCore.getClientBridge().openFile(destFile.getAbsolutePath(), true)) {
+            var out = new FileOutputStream(parcelFileDescriptor.getFileDescriptor());
             byte[] bArr = new byte[1024];
             while (true) {
                 int read = in.read(bArr);
@@ -113,7 +120,7 @@ public class Utils {
                 }
                 out.write(bArr, 0, read);
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             XposedBridge.log(e.getMessage());
             return e.getMessage();
         }
@@ -143,18 +150,6 @@ public class Utils {
         return toValidFileName(contactName) + "_" + number + "_" + new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.getDefault()).format(new Date()) + "." + fileFormat;
     }
 
-    public static Object getDefaultValue(Class<?> paramType) {
-        if (paramType == int.class || paramType == Integer.class) {
-            return 0;
-        } else if (paramType == long.class || paramType == Long.class) {
-            return 0L;
-        } else if (paramType == double.class || paramType == Double.class) {
-            return 0.0;
-        } else if (paramType == boolean.class || paramType == Boolean.class) {
-            return false;
-        }
-        return null;
-    }
 
     @NonNull
     public static String toValidFileName(@NonNull String input) {
@@ -195,5 +190,35 @@ public class Utils {
         } catch (Exception e) {
             return i;
         }
+    }
+
+    public static Application getApplicationByReflect() {
+        try {
+            @SuppressLint("PrivateApi")
+            Class<?> activityThread = Class.forName("android.app.ActivityThread");
+            Object thread = activityThread.getMethod("currentActivityThread").invoke(null);
+            Object app = activityThread.getMethod("getApplication").invoke(thread);
+            if (app == null) {
+                throw new NullPointerException("u should init first");
+            }
+            return (Application) app;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        throw new NullPointerException("u should init first");
+    }
+
+    public static <T> T binderLocalScope(BinderLocalScopeBlock<T> block) {
+        long identity = Binder.clearCallingIdentity();
+        try {
+            return block.execute();
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+    }
+
+    @FunctionalInterface
+    public interface BinderLocalScopeBlock<T> {
+        T execute();
     }
 }

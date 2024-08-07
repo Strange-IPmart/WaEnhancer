@@ -4,7 +4,7 @@ package com.wmods.wppenhacer.xposed.features.customization;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
-import android.graphics.drawable.NinePatchDrawable;
+import android.graphics.drawable.Drawable;
 
 import androidx.annotation.NonNull;
 
@@ -46,10 +46,10 @@ public class BubbleColors extends Feature {
             return;
 
         boolean bubbleColor = prefs.getBoolean("bubble_color", false);
-        int bubbleLeftColor = bubbleColor ? prefs.getInt("bubble_left", 0) : Color.parseColor(DesignUtils.checkSystemColor(properties.getProperty("bubble_left", "#000000")));
-        int bubbleRightColor = bubbleColor ? prefs.getInt("bubble_right", 0) : Color.parseColor(DesignUtils.checkSystemColor(properties.getProperty("bubble_right", "#000000")));
 
-        // Right
+        int bubbleLeftColor = bubbleColor ? prefs.getInt("bubble_left", 0) : Color.parseColor(DesignUtils.checkSystemColor(properties.getProperty("bubble_left", "#00000000")));
+        int bubbleRightColor = bubbleColor ? prefs.getInt("bubble_right", 0) : Color.parseColor(DesignUtils.checkSystemColor(properties.getProperty("bubble_right", "#00000000")));
+
         if (bubbleRightColor != 0) {
 
             var ballons = List.of(
@@ -86,23 +86,25 @@ public class BubbleColors extends Feature {
             }
         }
 
-        var methods = Unobfuscator.loadNineDrawableMethods(classLoader);
-        for (var method : methods) {
-            XposedBridge.hookMethod(method, new XC_MethodHook() {
-                @Override
-                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    var draw = (NinePatchDrawable) param.getResult();
-                    var right = (boolean) param.args[3];
-                    if (right) {
-                        if (bubbleRightColor == 0) return;
-                        draw.setColorFilter(new PorterDuffColorFilter(bubbleRightColor, PorterDuff.Mode.SRC_IN));
-                    } else {
-                        if (bubbleLeftColor == 0) return;
-                        draw.setColorFilter(new PorterDuffColorFilter(bubbleLeftColor, PorterDuff.Mode.SRC_IN));
-                    }
+
+        var bubbleDrawableMethod = Unobfuscator.loadBubbleDrawableMethod(classLoader);
+
+        XposedBridge.hookMethod(bubbleDrawableMethod, new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                var position = (int) param.args[0];
+                var draw = (Drawable) param.getResult();
+                var right = position == 3;
+                if (right) {
+                    if (bubbleRightColor == 0) return;
+                    draw.setColorFilter(new PorterDuffColorFilter(bubbleRightColor, PorterDuff.Mode.SRC_IN));
+                } else {
+                    if (bubbleLeftColor == 0) return;
+                    draw.setColorFilter(new PorterDuffColorFilter(bubbleLeftColor, PorterDuff.Mode.SRC_IN));
                 }
-            });
-        }
+            }
+        });
+
     }
 
     @NonNull

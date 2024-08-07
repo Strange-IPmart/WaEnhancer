@@ -1,40 +1,37 @@
-package com.wmods.wppenhacer;
+package com.wmods.wppenhacer.activities;
 
-import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.os.Build;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.view.Menu;
 import android.view.MenuItem;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.navigation.NavigationBarView;
-import com.wmods.wppenhacer.activities.AboutActivity;
+import com.waseemsabir.betterypermissionhelper.BatteryPermissionHelper;
+import com.wmods.wppenhacer.App;
+import com.wmods.wppenhacer.R;
+import com.wmods.wppenhacer.activities.base.BaseActivity;
 import com.wmods.wppenhacer.adapter.MainPagerAdapter;
 import com.wmods.wppenhacer.databinding.ActivityMainBinding;
 import com.wmods.wppenhacer.utils.FilePicker;
 
 import java.io.File;
-import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseActivity {
 
     private ActivityMainBinding binding;
 
+    private BatteryPermissionHelper batteryPermissionHelper = BatteryPermissionHelper.Companion.getInstance();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        setTheme(R.style.AppTheme);
-        getTheme().applyStyle(rikka.material.preference.R.style.ThemeOverlay_Rikka_Material3_Preference, true);
-        getTheme().applyStyle(R.style.ThemeOverlay, true);
-        getTheme().applyStyle(R.style.ThemeOverlay_MaterialGreen, true);
         App.changeLanguage(this);
         super.onCreate(savedInstanceState);
 
@@ -54,15 +51,15 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
                 return switch (item.getItemId()) {
-                    case R.id.navigation_home -> {
+                    case R.id.navigation_chat -> {
                         binding.viewPager.setCurrentItem(0);
                         yield true;
                     }
-                    case R.id.navigation_chat -> {
+                    case R.id.navigation_privacy -> {
                         binding.viewPager.setCurrentItem(1);
                         yield true;
                     }
-                    case R.id.navigation_privacy -> {
+                    case R.id.navigation_home -> {
                         binding.viewPager.setCurrentItem(2);
                         yield true;
                     }
@@ -86,24 +83,11 @@ public class MainActivity extends AppCompatActivity {
                 binding.navView.getMenu().getItem(position).setChecked(true);
             }
         });
-
-        setupPermissions();
+        binding.viewPager.setCurrentItem(2, false);
         createMainDir();
         FilePicker.registerFilePicker(this);
     }
 
-    private void setupPermissions() {
-        ArrayList<String> permissions = new ArrayList<>();
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissions.add(Manifest.permission.READ_MEDIA_IMAGES);
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE);
-        }
-        if (!permissions.isEmpty()) {
-            ActivityCompat.requestPermissions(this, permissions.toArray(new String[0]), 0);
-        }
-    }
 
     private void createMainDir() {
         var nomedia = new File(App.getWaEnhancerFolder(), ".nomedia");
@@ -123,14 +107,28 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.header_menu, menu);
+        var powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+        if (powerManager.isIgnoringBatteryOptimizations(getPackageName())) {
+            menu.findItem(R.id.batteryoptimization).setVisible(false);
+        }
         return true;
     }
 
+    @SuppressLint("BatteryLife")
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.menu_about) {
             startActivity(new Intent(this, AboutActivity.class));
             return true;
+        } else if (item.getItemId() == R.id.batteryoptimization) {
+            if (batteryPermissionHelper.isBatterySaverPermissionAvailable(this, true)) {
+                batteryPermissionHelper.getPermission(this, true, true);
+            } else {
+                var intent = new Intent();
+                intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                intent.setData(Uri.parse("package:" + getPackageName()));
+                startActivityForResult(intent, 0);
+            }
         }
         return super.onOptionsItemSelected(item);
     }

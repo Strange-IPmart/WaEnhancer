@@ -1,13 +1,10 @@
-[HIDE VIEW ONCE AND AUDIO SEEN]
-* This function has been separated into two (Hide View Once and Hide Audio Seen)
-* [FIX] This fixes the problem of sending messages in a group with just one person
-* [FIX] This fixes the problem of reading an audio and the microphone always staying green
+[WHATSAPP]
+* Added pre-support to version 2.24.16.xx
 
-[GHOST MODE]
-* Added button on the home screen to activate/deactivate ghost mode (hides ticks and presence on WhatsApp)
+[WA ENHANHCER]
+* Added function to bootloader spoofer (If you have previously been banned for using a GBWhatsapp and are receiving the Unofficial WhatsApp message, activate this option) thanks for chiteroman
+* Fix bug in File Preference
+* Fix bug in AntiUpdater (Now you can select Play Store or another store in Lsposed to avoid automatic update)
+* Update translations
 
-[GROUP FILTER]
-* Fix bug in group filter
 
-[WA ENHANCER]
-* Updated translation

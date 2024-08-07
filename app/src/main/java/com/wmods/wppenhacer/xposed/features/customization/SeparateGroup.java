@@ -14,6 +14,7 @@ import com.wmods.wppenhacer.xposed.core.Feature;
 import com.wmods.wppenhacer.xposed.core.db.MessageStore;
 import com.wmods.wppenhacer.xposed.core.devkit.Unobfuscator;
 import com.wmods.wppenhacer.xposed.core.devkit.UnobfuscatorCache;
+import com.wmods.wppenhacer.xposed.utils.ReflectionUtils;
 import com.wmods.wppenhacer.xposed.utils.Utils;
 
 import java.util.ArrayList;
@@ -44,19 +45,23 @@ public class SeparateGroup extends Feature {
 
     public void doHook() throws Exception {
 
-        var cFrag = XposedHelpers.findClass("com.whatsapp.conversationslist.ConversationsFragment", classLoader);
-        var home = XposedHelpers.findClass("com.whatsapp.HomeActivity", classLoader);
-
-        // Modifying tab list order
-        hookTabList(home);
+        var cFragClass = XposedHelpers.findClass("com.whatsapp.conversationslist.ConversationsFragment", classLoader);
+        var homeActivityClass = XposedHelpers.findClass("com.whatsapp.HomeActivity", classLoader);
 
         if (!prefs.getBoolean("separategroups", false)) return;
+
+        // Modifying tab list order
+        hookTabList(homeActivityClass);
+
         // Setting group icon
         hookTabIcon();
+
         // Setting up fragments
-        hookTabInstance(cFrag);
+        hookTabInstance(cFragClass);
+
         // Setting group tab name
-        hookTabName(home);
+        hookTabName();
+
         // Setting tab count
         hookTabCount();
     }
@@ -64,7 +69,7 @@ public class SeparateGroup extends Feature {
     @NonNull
     @Override
     public String getPluginName() {
-        return "Chats Filter";
+        return "Separate Group";
     }
 
     private void hookTabCount() throws Exception {
@@ -156,9 +161,9 @@ public class SeparateGroup extends Feature {
     }
 
     @SuppressLint("ResourceType")
-    private void hookTabName(Class<?> home) throws Exception {
+    private void hookTabName() throws Exception {
         var tabNameMethod = Unobfuscator.loadTabNameMethod(classLoader);
-        logDebug(Unobfuscator.getMethodDescriptor(tabNameMethod));
+        logDebug("TAB NAME", Unobfuscator.getMethodDescriptor(tabNameMethod));
         XposedBridge.hookMethod(tabNameMethod, new XC_MethodHook() {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
@@ -248,9 +253,9 @@ public class SeparateGroup extends Feature {
             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                 var filters = param.args[1];
                 var chatsList = (List) XposedHelpers.getObjectField(filters, "values");
-                var baseField = Unobfuscator.getFieldByExtendType(publishResultsMethod.getDeclaringClass(), BaseAdapter.class);
+                var baseField = ReflectionUtils.getFieldByExtendType(publishResultsMethod.getDeclaringClass(), BaseAdapter.class);
                 if (baseField == null) return;
-                var convField = Unobfuscator.getFieldByType(baseField.getType(), cFrag);
+                var convField = ReflectionUtils.getFieldByType(baseField.getType(), cFrag);
                 Object thiz = convField.get(baseField.get(param.thisObject));
                 if (thiz == null) return;
                 var resultList = filterChat(thiz, chatsList);

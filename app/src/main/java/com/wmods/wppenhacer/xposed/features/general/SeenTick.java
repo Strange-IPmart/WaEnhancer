@@ -60,6 +60,24 @@ public class SeenTick extends Feature {
         super(loader, preferences);
     }
 
+    public static void setSeenButton(ImageView buttonImage, boolean b) {
+        Drawable originalDrawable = DesignUtils.getDrawableByName("ic_notif_mark_read");
+        Drawable clonedDrawable;
+
+        if (originalDrawable instanceof BitmapDrawable bitmapDrawable) {
+            Bitmap bitmap = bitmapDrawable.getBitmap();
+            Bitmap clonedBitmap = bitmap.copy(bitmap.getConfig(), true);
+            clonedDrawable = new BitmapDrawable(buttonImage.getResources(), clonedBitmap);
+        } else {
+            clonedDrawable = Objects.requireNonNull(originalDrawable.getConstantState()).newDrawable().mutate();
+        }
+        if (b) {
+            clonedDrawable.setColorFilter(Color.CYAN, PorterDuff.Mode.SRC_ATOP);
+        }
+        buttonImage.setImageDrawable(clonedDrawable);
+        buttonImage.postInvalidate();
+    }
+
     @Override
     public void doHook() throws Throwable {
 
@@ -67,13 +85,21 @@ public class SeenTick extends Feature {
         var bubbleMethod = Unobfuscator.loadAntiRevokeBubbleMethod(classLoader);
         logDebug(Unobfuscator.getMethodDescriptor(bubbleMethod));
 
-        var messageSendClass = XposedHelpers.findClass("com.whatsapp.jobqueue.job.SendE2EMessageJob", classLoader);
 
         WaJobManagerMethod = Unobfuscator.loadBlueOnReplayWaJobManagerMethod(classLoader);
 
-        var messageJobMethod = Unobfuscator.loadBlueOnReplayMessageJobMethod(classLoader);
-
         mSendReadClass = XposedHelpers.findClass("com.whatsapp.jobqueue.job.SendReadReceiptJob", classLoader);
+
+        // hook instance of WaJobManager;
+
+        XposedBridge.hookAllConstructors(WaJobManagerMethod.getDeclaringClass(), new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                mWaJobManager = param.thisObject;
+            }
+        });
+
+        // hook conversation screen
 
         WppCore.addListenerChat((activity, type) -> {
             if (activity.getClass().getSimpleName().equals("Conversation") && (type == WppCore.ActivityChangeState.ChangeType.START || type == WppCore.ActivityChangeState.ChangeType.RESUME)) {
@@ -86,6 +112,8 @@ public class SeenTick extends Feature {
             }
         });
 
+        // hook messages
+
         XposedBridge.hookMethod(bubbleMethod, new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) {
@@ -97,58 +125,17 @@ public class SeenTick extends Feature {
             }
         });
 
-        XposedBridge.hookMethod(messageJobMethod, new XC_MethodHook() {
-            @Override
-            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                if (!prefs.getBoolean("blueonreply", false)) return;
-                var obj = messageSendClass.cast(param.thisObject);
-                var rawJid = (String) XposedHelpers.getObjectField(obj, "jid");
-                var handler = new Handler(Looper.getMainLooper());
-                if (Objects.equals(currentScreen, "status")) {
-                    if (messages.isEmpty()) return;
-                    MessageStore.getInstance().storeMessageRead(messages.valueAt(0).messageId);
-                    var view = messageMap.get(messages.valueAt(0).messageId);
-                    if (view != null) view.post(() -> setSeenButton(view, true));
-                    handler.post(() -> sendBlueTickStatus(currentJid));
-                } else handler.post(() -> sendBlueTick(rawJid));
-            }
-        });
-
-        XposedBridge.hookAllConstructors(WaJobManagerMethod.getDeclaringClass(), new XC_MethodHook() {
-            @Override
-            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                mWaJobManager = param.thisObject;
-            }
-        });
+        hookOnSendMessages();
 
         // Send Seen functions
-
         var ticktype = Integer.parseInt(prefs.getString("seentick", "0"));
         if (ticktype == 0) return;
 
-        var onCreateMenuConversationMethod = Unobfuscator.loadBlueOnReplayCreateMenuConversationMethod(classLoader);
-        logDebug(Unobfuscator.getMethodDescriptor(onCreateMenuConversationMethod));
-        XposedBridge.hookMethod(onCreateMenuConversationMethod, new XC_MethodHook() {
-            @Override
-            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                if (!prefs.getBoolean("hideread", false))
-                    return;
-
-                var menu = (Menu) param.args[0];
-                var menuItem = menu.add(0, 0, 0, ResId.string.send_blue_tick);
-                if (ticktype == 1) menuItem.setShowAsAction(2);
-                menuItem.setIcon(Utils.getID("ic_notif_mark_read", "drawable"));
-                menuItem.setOnMenuItemClickListener(item -> {
-                    Utils.showToast(Utils.getApplication().getString(ResId.string.sending_read_blue_tick), Toast.LENGTH_SHORT);
-                    sendBlueTick(currentJid);
-                    return true;
-                });
-            }
-        });
+        // hook current status
 
         var setPageActiveMethod = Unobfuscator.loadStatusActivePage(classLoader);
         logDebug(Unobfuscator.getMethodDescriptor(setPageActiveMethod));
-        var fieldList = Unobfuscator.getFieldByType(setPageActiveMethod.getDeclaringClass(), List.class);
+        var fieldList = ReflectionUtils.getFieldByType(setPageActiveMethod.getDeclaringClass(), List.class);
 
         XposedBridge.hookMethod(setPageActiveMethod, new XC_MethodHook() {
             @Override
@@ -165,7 +152,18 @@ public class SeenTick extends Feature {
             }
         });
 
+        // Add button to send Seen in conversation
+        hookConversationScreen(ticktype);
 
+        /// Add button to send View Once to target
+        hookViewOnceScreen(ticktype);
+
+        // Add button to send Seen in status
+        hookStatusScreen(ticktype);
+
+    }
+
+    private void hookStatusScreen(int ticktype) throws Exception {
         var viewButtonMethod = Unobfuscator.loadBlueOnReplayViewButtonMethod(classLoader);
         logDebug(Unobfuscator.getMethodDescriptor(viewButtonMethod));
 
@@ -224,7 +222,27 @@ public class SeenTick extends Feature {
                         }
                     });
         }
+    }
 
+    private void hookConversationScreen(int ticktype) throws Exception {
+        var onCreateMenuConversationMethod = Unobfuscator.loadBlueOnReplayCreateMenuConversationMethod(classLoader);
+        logDebug(Unobfuscator.getMethodDescriptor(onCreateMenuConversationMethod));
+        XposedBridge.hookMethod(onCreateMenuConversationMethod, new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                if (!prefs.getBoolean("hideread", false))
+                    return;
+                var menu = (Menu) param.args[0];
+                var menuItem = menu.add(0, 0, 0, ResId.string.send_blue_tick);
+                if (ticktype == 1) menuItem.setShowAsAction(2);
+                menuItem.setIcon(Utils.getID("ic_notif_mark_read", "drawable"));
+                menuItem.setOnMenuItemClickListener(item -> {
+                    Utils.showToast(Utils.getApplication().getString(ResId.string.sending_read_blue_tick), Toast.LENGTH_SHORT);
+                    sendBlueTick(currentJid);
+                    return true;
+                });
+            }
+        });
 
         MenuStatus.menuStatuses.add(
                 new MenuStatus.MenuItemStatus() {
@@ -259,9 +277,9 @@ public class SeenTick extends Feature {
                         Utils.showToast(Utils.getApplication().getString(ResId.string.sending_read_blue_tick), Toast.LENGTH_SHORT);
                     }
                 });
+    }
 
-
-        /// Add button to send View Once to Target
+    private void hookViewOnceScreen(int ticktype) throws Exception {
         var menuMethod = Unobfuscator.loadViewOnceDownloadMenuMethod(classLoader);
         logDebug(Unobfuscator.getMethodDescriptor(menuMethod));
         var menuIntField = Unobfuscator.loadViewOnceDownloadMenuField(classLoader);
@@ -278,7 +296,7 @@ public class SeenTick extends Feature {
                     MenuItem item = menu.add(0, 0, 0, ResId.string.send_blue_tick).setIcon(Utils.getID("ic_notif_mark_read", "drawable"));
                     if (ticktype == 1) item.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
                     item.setOnMenuItemClickListener(item1 -> {
-                        var messageField = Unobfuscator.getFieldByExtendType(menuMethod.getDeclaringClass(), classThreadMessage);
+                        var messageField = ReflectionUtils.getFieldByExtendType(menuMethod.getDeclaringClass(), classThreadMessage);
                         var messageObject = XposedHelpers.getObjectField(param.thisObject, messageField.getName());
                         sendBlueTickMedia(messageObject, true);
                         Toast.makeText(Utils.getApplication(), ResId.string.sending_read_blue_tick, Toast.LENGTH_SHORT).show();
@@ -290,22 +308,26 @@ public class SeenTick extends Feature {
         });
     }
 
-    public static void setSeenButton(ImageView buttonImage, boolean b) {
-        Drawable originalDrawable = DesignUtils.getDrawableByName("ic_notif_mark_read");
-        Drawable clonedDrawable;
+    private void hookOnSendMessages() throws Exception {
+        var messageJobMethod = Unobfuscator.loadBlueOnReplayMessageJobMethod(classLoader);
+        var messageSendClass = XposedHelpers.findClass("com.whatsapp.jobqueue.job.SendE2EMessageJob", classLoader);
 
-        if (originalDrawable instanceof BitmapDrawable) {
-            Bitmap bitmap = ((BitmapDrawable) originalDrawable).getBitmap();
-            Bitmap clonedBitmap = bitmap.copy(bitmap.getConfig(), true);
-            clonedDrawable = new BitmapDrawable(buttonImage.getResources(), clonedBitmap);
-        } else {
-            clonedDrawable = Objects.requireNonNull(originalDrawable.getConstantState()).newDrawable().mutate();
-        }
-        if (b) {
-            clonedDrawable.setColorFilter(Color.CYAN, PorterDuff.Mode.SRC_ATOP);
-        }
-        buttonImage.setImageDrawable(clonedDrawable);
-        buttonImage.postInvalidate();
+        XposedBridge.hookMethod(messageJobMethod, new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                if (!prefs.getBoolean("blueonreply", false)) return;
+                var obj = messageSendClass.cast(param.thisObject);
+                var rawJid = (String) XposedHelpers.getObjectField(obj, "jid");
+                var handler = new Handler(Looper.getMainLooper());
+                if (Objects.equals(currentScreen, "status")) {
+                    if (messages.isEmpty()) return;
+                    MessageStore.getInstance().storeMessageRead(messages.valueAt(0).messageId);
+                    var view = messageMap.get(messages.valueAt(0).messageId);
+                    if (view != null) view.post(() -> setSeenButton(view, true));
+                    handler.post(() -> sendBlueTickStatus(currentJid));
+                } else handler.post(() -> sendBlueTick(rawJid));
+            }
+        });
     }
 
 
@@ -327,66 +349,72 @@ public class SeenTick extends Feature {
     }
 
     private void sendBlueTickMsg(String currentJid) {
-        logDebug("messages: " + Arrays.toString(messages.toArray(new MessageInfo[0])));
-        if (messages.isEmpty() || currentJid == null || currentJid.contains(Utils.getMyNumber()))
-            return;
-        try {
-            logDebug("Blue on Reply: " + currentJid);
-            HashMap<Object, List<String>> map = new HashMap<>();
-            for (var messageInfo : messages) {
-                map.computeIfAbsent(messageInfo.userJid, k -> new ArrayList<>());
-                Objects.requireNonNull(map.get(messageInfo.userJid)).add(messageInfo.messageId);
+        CompletableFuture.runAsync(() -> {
+            logDebug("messages: " + Arrays.toString(messages.toArray(new MessageInfo[0])));
+            if (messages.isEmpty() || currentJid == null || currentJid.contains(Utils.getMyNumber()))
+                return;
+            try {
+                logDebug("Blue on Reply: " + currentJid);
+                HashMap<Object, List<String>> map = new HashMap<>();
+                for (var messageInfo : messages) {
+                    map.computeIfAbsent(messageInfo.userJid, k -> new ArrayList<>());
+                    Objects.requireNonNull(map.get(messageInfo.userJid)).add(messageInfo.messageId);
+                }
+                var userJidTarget = WppCore.createUserJid(currentJid);
+                for (var userjid : map.keySet()) {
+                    var messages = Objects.requireNonNull(map.get(userjid)).toArray(new String[0]);
+                    WppCore.setPrivBoolean(messages[0] + "_rpass", true);
+                    var participant = WppCore.isGroup(currentJid) ? userjid : null;
+                    var sendJob = XposedHelpers.newInstance(mSendReadClass, userJidTarget, participant, null, null, messages, -1, 1L, false);
+                    WaJobManagerMethod.invoke(mWaJobManager, sendJob);
+                }
+                messages.clear();
+            } catch (Throwable e) {
+                XposedBridge.log("Error: " + e.getMessage());
             }
-            var userJidTarget = WppCore.createUserJid(currentJid);
-            for (var userjid : map.keySet()) {
-                var messages = Objects.requireNonNull(map.get(userjid)).toArray(new String[0]);
-                WppCore.setPrivBoolean(messages[0] + "_rpass", true);
-                var participant = WppCore.isGroup(currentJid) ? userjid : null;
-                var sendJob = XposedHelpers.newInstance(mSendReadClass, userJidTarget, participant, null, null, messages, -1, 1L, false);
-                WaJobManagerMethod.invoke(mWaJobManager, sendJob);
-            }
-            messages.clear();
-        } catch (Throwable e) {
-            XposedBridge.log("Error: " + e.getMessage());
-        }
+        });
     }
 
     private void sendBlueTickStatus(String currentJid) {
-        logDebug("messages: " + Arrays.toString(messages.toArray(new MessageInfo[0])));
-        if (messages.isEmpty() || currentJid == null || currentJid.equals("status_me")) return;
-        try {
-            logDebug("sendBlue: " + currentJid);
-            var arr_s = messages.stream().map(item -> item.messageId).toArray(String[]::new);
-            Arrays.stream(arr_s).forEach(s -> MessageStore.getInstance().storeMessageRead(s));
-            var userJidSender = WppCore.createUserJid("status@broadcast");
-            var userJid = WppCore.createUserJid(currentJid);
-            WppCore.setPrivBoolean(arr_s[0] + "_rpass", true);
-            var sendJob = XposedHelpers.newInstance(mSendReadClass, userJidSender, userJid, null, null, arr_s, -1, 0L, false);
-            WaJobManagerMethod.invoke(mWaJobManager, sendJob);
-            messages.clear();
-        } catch (Throwable e) {
-            XposedBridge.log("Error: " + e.getMessage());
-        }
+        CompletableFuture.runAsync(() -> {
+            logDebug("messages: " + Arrays.toString(messages.toArray(new MessageInfo[0])));
+            if (messages.isEmpty() || currentJid == null || currentJid.equals("status_me")) return;
+            try {
+                logDebug("sendBlue: " + currentJid);
+                var arr_s = messages.stream().map(item -> item.messageId).toArray(String[]::new);
+                Arrays.stream(arr_s).forEach(s -> MessageStore.getInstance().storeMessageRead(s));
+                var userJidSender = WppCore.createUserJid("status@broadcast");
+                var userJid = WppCore.createUserJid(currentJid);
+                WppCore.setPrivBoolean(arr_s[0] + "_rpass", true);
+                var sendJob = XposedHelpers.newInstance(mSendReadClass, userJidSender, userJid, null, null, arr_s, -1, 0L, false);
+                WaJobManagerMethod.invoke(mWaJobManager, sendJob);
+                messages.clear();
+            } catch (Throwable e) {
+                XposedBridge.log("Error: " + e.getMessage());
+            }
+        });
     }
 
     private void sendBlueTickMedia(Object messageObject, boolean clear) {
-        try {
-            var fMessage = new FMessageWpp(messageObject);
-            logDebug("sendBlueTickMedia: " + WppCore.getRawString(fMessage.getKey().remoteJid));
-            var sendPlayerClass = XposedHelpers.findClass("com.whatsapp.jobqueue.job.SendPlayedReceiptJobV2", classLoader);
-            var constructor = sendPlayerClass.getDeclaredConstructors()[0];
-            var classParticipantInfo = constructor.getParameterTypes()[0];
-            var rowsId = new Long[]{fMessage.getRowId()};
-            var remoteJid = fMessage.getKey().remoteJid;
-            var messageId = fMessage.getKey().messageID;
-            constructor = classParticipantInfo.getDeclaredConstructors()[0];
-            var participantInfo = constructor.newInstance(remoteJid, null, rowsId, new String[]{messageId});
-            var sendJob = XposedHelpers.newInstance(sendPlayerClass, participantInfo, false);
-            WaJobManagerMethod.invoke(mWaJobManager, sendJob);
-            if (clear) messages.clear();
-        } catch (Throwable e) {
-            XposedBridge.log(e);
-        }
+        CompletableFuture.runAsync(() -> {
+            try {
+                var fMessage = new FMessageWpp(messageObject);
+                logDebug("sendBlueTickMedia: " + WppCore.getRawString(fMessage.getKey().remoteJid));
+                var sendPlayerClass = XposedHelpers.findClass("com.whatsapp.jobqueue.job.SendPlayedReceiptJobV2", classLoader);
+                var constructor = sendPlayerClass.getDeclaredConstructors()[0];
+                var classParticipantInfo = constructor.getParameterTypes()[0];
+                var rowsId = new Long[]{fMessage.getRowId()};
+                var remoteJid = fMessage.getKey().remoteJid;
+                var messageId = fMessage.getKey().messageID;
+                constructor = classParticipantInfo.getDeclaredConstructors()[0];
+                var participantInfo = constructor.newInstance(remoteJid, null, rowsId, new String[]{messageId});
+                var sendJob = XposedHelpers.newInstance(sendPlayerClass, participantInfo, false);
+                WaJobManagerMethod.invoke(mWaJobManager, sendJob);
+                if (clear) messages.clear();
+            } catch (Throwable e) {
+                XposedBridge.log(e);
+            }
+        });
     }
 
     @NonNull

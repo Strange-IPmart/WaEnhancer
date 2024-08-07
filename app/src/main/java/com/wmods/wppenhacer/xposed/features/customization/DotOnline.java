@@ -144,7 +144,7 @@ public class DotOnline extends Feature {
                 if (showOnlineText) {
                     lastSeenText.setVisibility(View.INVISIBLE); // Hide last seen time initially
                 }
-                var jidFiled = Unobfuscator.getFieldByExtendType(object.getClass(), XposedHelpers.findClass("com.whatsapp.jid.Jid", classLoader));
+                var jidFiled = ReflectionUtils.getFieldByExtendType(object.getClass(), XposedHelpers.findClass("com.whatsapp.jid.Jid", classLoader));
                 var jidObject = jidFiled.get(object);
                 var jid = WppCore.getRawString(jidObject);
                 if (WppCore.isGroup(jid)) return;
@@ -152,7 +152,8 @@ public class DotOnline extends Feature {
                 var method = ReflectionUtils.findMethodUsingFilter(sendPresenceMethod.getDeclaringClass(), method1 -> method1.getParameterCount() == 2 && JidClass.isAssignableFrom(method1.getParameterTypes()[0]) && method1.getParameterTypes()[1] == sendPresenceMethod.getDeclaringClass());
                 var instance = ReflectionUtils.callMethod(method, null, jidObject, mInstancePresence); //XposedHelpers.newInstance(clazz, new Object[]{null, null});
                 sendPresenceMethod.invoke(null, jidObject, instance, mInstancePresence);
-                var status = (String) getStatusUser.invoke(mStatusUser, object);
+                var status = (String) ReflectionUtils.callMethod(getStatusUser, mStatusUser);
+
                 var currentPosition = (int) ReflectionUtils.callMethod(getAdapterPositionMethod, viewHolder);
                 if (currentPosition != position) return;
                 if (!TextUtils.isEmpty(status) && status.trim().equals(UnobfuscatorCache.getInstance().getString("online"))) {

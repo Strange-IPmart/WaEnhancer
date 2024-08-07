@@ -13,6 +13,8 @@ public class ResId {
         public static int refresh;
         public static int ghost_disabled;
         public static int ghost_enabled;
+        public static int airplane_enabled;
+        public static int airplane_disabled;
     }
 
     public static class string {
@@ -72,6 +74,8 @@ public class ResId {
         public static int disable;
         public static int enable;
         public static int ghost_mode_s;
+        public static int starting_cache;
+        public static int bridge_error;
     }
 
     public static class array {

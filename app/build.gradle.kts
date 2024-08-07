@@ -23,13 +23,15 @@ val gitHash: String = getGitHashCommit().uppercase(Locale.getDefault())
 android {
     namespace = "com.wmods.wppenhacer"
     compileSdk = 34
+    buildToolsVersion = "34.0.0"
+    ndkVersion = "27.0.11902837 rc2"
 
     defaultConfig {
         applicationId = "com.wmods.wppenhacer"
         minSdk = 28
         targetSdk = 34
-        versionCode = 120
-        versionName = "1.2.0-DEV ($gitHash)"
+        versionCode = 130
+        versionName = "1.3.1-DEV ($gitHash)"
         multiDexEnabled = true
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -91,9 +93,13 @@ android {
     buildFeatures {
         viewBinding = true
         buildConfig = true
+        aidl = true
     }
-    buildToolsVersion = "34.0.0"
-    ndkVersion = "27.0.11902837 rc2"
+
+
+    lint {
+        disable += "SelectedPhotoAccess"
+    }
 
     materialThemeBuilder {
         themes {
@@ -132,6 +138,9 @@ dependencies {
     implementation(libs.rikkax.widget.borderview)
     implementation(libs.jstyleparser)
     implementation(libs.okhttp)
+    implementation(libs.filepicker)
+    implementation(libs.betterypermissionhelper)
+    implementation(libs.bcpkix.jdk18on)
 }
 
 configurations.all {
@@ -143,7 +152,6 @@ configurations.all {
 
 afterEvaluate {
     tasks.findByName("installDebug")?.doLast {
-        println(project.properties["debug_package_name"]?.toString())
         runCatching {
             runBlocking {
                 exec {

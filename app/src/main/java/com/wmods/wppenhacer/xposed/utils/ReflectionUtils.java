@@ -2,12 +2,15 @@ package com.wmods.wppenhacer.xposed.utils;
 
 import android.util.Pair;
 
+import androidx.annotation.NonNull;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -15,6 +18,21 @@ import de.robv.android.xposed.XposedHelpers;
 
 @SuppressWarnings("unused")
 public class ReflectionUtils {
+
+    public static Map<String, Class<?>> primitiveClasses = Map.of(
+            "byte", Byte.TYPE,
+            "short", Short.TYPE,
+            "int", Integer.TYPE,
+            "long", Long.TYPE,
+            "float", Float.TYPE,
+            "boolean", Boolean.TYPE
+    );
+
+    public static Class<?> findClass(String className, ClassLoader classLoader) {
+        var primitive = primitiveClasses.get(className);
+        if (primitive != null) return primitive;
+        return XposedHelpers.findClass(className, classLoader);
+    }
 
     public static Method findMethodUsingFilter(Class<?> clazz, Predicate<Method> predicate) {
         do {
@@ -65,7 +83,8 @@ public class ReflectionUtils {
     /**
      * @noinspection SimplifyStreamApiCallChains
      */
-    public static Field[] findAllFieldsUsingFilter(Class<?> clazz, Predicate<Field> predicate) {
+    @NonNull
+    public static Field[] findAllFieldsUsingFilter(Class<?> clazz, @NonNull Predicate<Field> predicate) {
         do {
             var results = Arrays.stream(clazz.getDeclaredFields()).filter(predicate).collect(Collectors.toList());
             if (!results.isEmpty()) return results.toArray(new Field[0]);
@@ -121,10 +140,37 @@ public class ReflectionUtils {
 
     public static Object callMethod(Method method, Object instance, Object... args) {
         try {
+            var count = method.getParameterCount();
+            if (count != args.length) {
+                var newargs = initArray(method.getParameterTypes());
+                System.arraycopy(args, 0, newargs, 0, Math.min(args.length, count));
+                args = newargs;
+            }
             return method.invoke(instance, args);
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private static Object[] initArray(Class<?>[] parameterTypes) {
+        var args = new Object[parameterTypes.length];
+        for (int i = 0; i < parameterTypes.length; i++) {
+            args[i] = getDefaultValue(parameterTypes[i]);
+        }
+        return args;
+    }
+
+    public static Object getDefaultValue(Class<?> paramType) {
+        if (paramType == int.class || paramType == Integer.class) {
+            return 0;
+        } else if (paramType == long.class || paramType == Long.class) {
+            return 0L;
+        } else if (paramType == double.class || paramType == Double.class) {
+            return 0.0;
+        } else if (paramType == boolean.class || paramType == Boolean.class) {
+            return false;
+        }
+        return null;
     }
 
     public static Object getField(Field loadProfileInfoField, Object thisObject) {
@@ -199,4 +245,23 @@ public class ReflectionUtils {
         }
         return false;
     }
+
+    public synchronized static boolean isCalledFromClass(Class<?> cls) {
+        var trace = Thread.currentThread().getStackTrace();
+        for (StackTraceElement stackTraceElement : trace) {
+            if (stackTraceElement.getClassName().equals(cls.getName()))
+                return true;
+        }
+        return false;
+    }
+
+    public synchronized static boolean isCalledFromMethod(Method method) {
+        var trace = Thread.currentThread().getStackTrace();
+        for (StackTraceElement stackTraceElement : trace) {
+            if (stackTraceElement.getClassName().equals(method.getDeclaringClass().getName()) && stackTraceElement.getMethodName().equals(method.getName()))
+                return true;
+        }
+        return false;
+    }
+
 }

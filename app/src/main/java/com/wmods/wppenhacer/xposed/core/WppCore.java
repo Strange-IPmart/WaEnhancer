@@ -14,9 +14,16 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.wmods.wppenhacer.views.dialog.BottomDialogWpp;
+import com.wmods.wppenhacer.xposed.bridge.WaeIIFace;
+import com.wmods.wppenhacer.xposed.bridge.client.BaseClient;
+import com.wmods.wppenhacer.xposed.bridge.client.BridgeClient;
+import com.wmods.wppenhacer.xposed.bridge.client.ProviderClient;
+import com.wmods.wppenhacer.xposed.core.components.AlertDialogWpp;
 import com.wmods.wppenhacer.xposed.core.components.FMessageWpp;
 import com.wmods.wppenhacer.xposed.core.devkit.Unobfuscator;
+import com.wmods.wppenhacer.xposed.core.devkit.UnobfuscatorCache;
 import com.wmods.wppenhacer.xposed.utils.ReflectionUtils;
+import com.wmods.wppenhacer.xposed.utils.ResId;
 import com.wmods.wppenhacer.xposed.utils.Utils;
 
 import java.io.File;
@@ -28,6 +35,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
@@ -48,6 +56,8 @@ public class WppCore {
     private static Object mStartUpConfig;
     private static Object mActionUser;
     private static SQLiteDatabase mWaDatabase;
+    public static BaseClient client;
+    private static boolean isBridgeInitialized;
 
 
     public static void Initialize(ClassLoader loader) throws Exception {
@@ -83,6 +93,51 @@ public class WppCore {
         });
         // Load wa database
         loadWADatabase();
+        initBridge(Utils.getApplication());
+    }
+
+    public static void initBridge(Context context) throws Exception {
+        var prefsCacheHooks = UnobfuscatorCache.getInstance().sPrefsCacheHooks;
+        int preferredOrder = prefsCacheHooks.getInt("preferredOrder", 1); // 0 for ProviderClient first, 1 for BridgeClient first
+
+        boolean connected = false;
+        if (preferredOrder == 0) {
+            if (tryConnectBridge(new ProviderClient(context))) {
+                connected = true;
+            } else if (tryConnectBridge(new BridgeClient(context))) {
+                connected = true;
+                preferredOrder = 1; // Update preference to BridgeClient first
+            }
+        } else {
+            if (tryConnectBridge(new BridgeClient(context))) {
+                connected = true;
+            } else if (tryConnectBridge(new ProviderClient(context))) {
+                connected = true;
+                preferredOrder = 0; // Update preference to ProviderClient first
+            }
+        }
+
+        if (!connected) {
+            throw new Exception(context.getString(ResId.string.bridge_error));
+        }
+
+        // Update the preferred order if it changed
+        prefsCacheHooks.edit().putInt("preferredOrder", preferredOrder).apply();
+    }
+
+
+    private static boolean tryConnectBridge(BaseClient baseClient) throws Exception {
+        try {
+            XposedBridge.log("Trying to connect to " + baseClient.getClass().getSimpleName());
+            client = baseClient;
+            CompletableFuture<Boolean> canLoadFuture = baseClient.connect();
+            Boolean canLoad = canLoadFuture.get();
+            if (!canLoad) throw new Exception();
+            isBridgeInitialized = true;
+        } catch (Exception e) {
+            return false;
+        }
+        return true;
     }
 
     public static void sendMessage(String number, String message) {
@@ -97,7 +152,7 @@ public class WppCore {
                 var newObject = new Object[senderMethod.getParameterCount()];
                 for (int i = 0; i < newObject.length; i++) {
                     var param = senderMethod.getParameterTypes()[i];
-                    newObject[i] = Utils.getDefaultValue(param);
+                    newObject[i] = ReflectionUtils.getDefaultValue(param);
                 }
                 var index = ReflectionUtils.findIndexOfType(senderMethod.getParameterTypes(), String.class);
                 newObject[index] = message;
@@ -320,6 +375,24 @@ public class WppCore {
 
     public static void addListenerChat(ActivityChangeState listener) {
         listenerChat.add(listener);
+    }
+
+    public static WaeIIFace getClientBridge() throws Exception {
+        if (client == null || client.getService() == null || !client.getService().asBinder().isBinderAlive() || !client.getService().asBinder().pingBinder()) {
+            WppCore.getCurrentActivity().runOnUiThread(() -> {
+                var dialog = new AlertDialogWpp(WppCore.getCurrentActivity());
+                dialog.setTitle("Bridge Error");
+                dialog.setMessage("The Connection with WaEnhancer was lost, it is necessary to reconnect with WaEnhancer in order to reestablish the connection.");
+                dialog.setPositiveButton("reconnect", (dialog1, which) -> {
+                    client.tryReconnect();
+                    dialog.dismiss();
+                });
+                dialog.setNegativeButton("cancel", null);
+                dialog.show();
+            });
+            throw new Exception("Failed connect to Bridge");
+        }
+        return client.getService();
     }
 
 
