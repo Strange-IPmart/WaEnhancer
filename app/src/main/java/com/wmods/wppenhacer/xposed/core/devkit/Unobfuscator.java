@@ -209,7 +209,8 @@ public class Unobfuscator {
             for (var invoke : invokes) {
                 var method = invoke.getMethodInstance(classLoader);
                 if (method.getParameterCount() == 1
-                        && method.getParameterTypes()[0] == int.class
+                        && (method.getParameterTypes()[0] == int.class
+                        || method.getParameterTypes()[0] == long.class)
                         && method.getDeclaringClass() == messageInfoClass
                         && method.getReturnType() == void.class) {
                     return method;
@@ -278,7 +279,7 @@ public class Unobfuscator {
 
     public synchronized static Method loadGetTabMethod(ClassLoader classLoader) throws Exception {
         return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> {
-            Method result = findFirstMethodUsingStringsFilter(classLoader, "X.", StringMatchType.Contains, "Invalid tab id: 600");
+            Method result = findFirstMethodUsingStringsFilter(classLoader, "X.", StringMatchType.Contains, "No HomeFragment mapping for community tab id:");
             if (result == null) throw new Exception("GetTab method not found");
             return result;
         });
@@ -454,6 +455,24 @@ public class Unobfuscator {
         });
     }
 
+    public synchronized static Field[] loadMediaQualityVideoFields(ClassLoader classLoader) throws Exception {
+        var clazz = loadMediaQualityVideoMethod2(classLoader).getReturnType();
+        var method = dexkit.findMethod(FindMethod.create()
+                .searchPackages(List.of("X."))
+                .matcher(MethodMatcher.create().addUsingString("videotranscodequeue/uumos_cs"))
+        );
+        if (method.isEmpty()) throw new Exception("MediaQualityVideoTargetFields method not found");
+        var fields = method.get(0).getUsingFields();
+        ArrayList<Field> result = new ArrayList<>();
+        for (var field : fields) {
+            var realField = field.getField().getFieldInstance(classLoader);
+            if (realField.getDeclaringClass().equals(clazz)) result.add(realField);
+        }
+        if (result.size() < 4)
+            throw new Exception("MediaQualityVideoTargetFields method not found");
+        return result.toArray(new Field[0]);
+    }
+
     public synchronized static Class loadMediaQualityVideoLimitClass(ClassLoader classLoader) throws Exception {
         return UnobfuscatorCache.getInstance().getClass(classLoader, () -> {
             var clazz = findFirstClassUsingStrings(classLoader, StringMatchType.Contains, "videoLimitMb=");
@@ -498,7 +517,7 @@ public class Unobfuscator {
 
     public synchronized static Class<?> loadStatusDownloadMediaClass(ClassLoader classLoader) throws Exception {
         return UnobfuscatorCache.getInstance().getClass(classLoader, () -> {
-            var clazz = findFirstClassUsingStrings(classLoader, StringMatchType.Contains, "FMessageVideo/Cloned");
+            var clazz = findFirstClassUsingStrings(classLoader, StringMatchType.Contains, "static.whatsapp.net/downloadable?category=PSA");
             if (clazz == null) throw new Exception("StatusDownloadMedia class not found");
             return clazz;
         });
@@ -1197,20 +1216,20 @@ public class Unobfuscator {
         });
     }
 
-    public synchronized static Method loadSeeMoreMethod(ClassLoader loader) throws Exception {
-        return UnobfuscatorCache.getInstance().getMethod(loader, () -> {
+    public synchronized static Constructor loadSeeMoreConstructor(ClassLoader loader) throws Exception {
+        return UnobfuscatorCache.getInstance().getConstructor(loader, () -> {
             var classList = dexkit.findClass(new FindClass().matcher(new ClassMatcher().
                     addMethod(new MethodMatcher().addUsingNumber(16384).addUsingNumber(512).addUsingNumber(64).addUsingNumber(16))
                     .addMethod(new MethodMatcher().paramCount(2).addParamType(int.class).addParamType(boolean.class))));
-            if (classList.isEmpty()) throw new RuntimeException("SeeMore method 1 not found");
+            if (classList.isEmpty()) throw new RuntimeException("SeeMore constructor 1 not found");
             var clazzData = classList.get(0);
             XposedBridge.log(clazzData.toString());
             for (var method : clazzData.getMethods()) {
-                if (method.getParamCount() == 2 && method.getParamTypes().get(0).getName().equals(int.class.getName()) && method.getParamTypes().get(1).getName().equals(boolean.class.getName())) {
-                    return method.getMethodInstance(loader);
+                if (method.getParamCount() == 2 && method.isConstructor() && method.getParamTypes().get(0).getName().equals(int.class.getName()) && method.getParamTypes().get(1).getName().equals(int.class.getName())) {
+                    return method.getConstructorInstance(loader);
                 }
             }
-            throw new RuntimeException("SeeMore method 2 not found");
+            throw new RuntimeException("SeeMore constructor 2 not found");
         });
     }
 
@@ -1428,8 +1447,16 @@ public class Unobfuscator {
 
     public synchronized static Method loadForwardAudioTypeMethod(ClassLoader classLoader) throws Exception {
         return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> {
-            var result = findFirstMethodUsingStrings(classLoader, StringMatchType.Contains, "forwardable", "FMessageFactory/newFMessageForForward/thumbnail");
-            if (result == null) throw new RuntimeException("ForwardAudioType method not found");
+            var results = findAllMethodUsingStrings(classLoader, StringMatchType.Contains, "FMessageFactory/newFMessageForForward/thumbnail");
+            if (results == null || results.length < 1)
+                throw new RuntimeException("ForwardAudioType method not found");
+            Method result;
+            if (results.length > 1) {
+                result = findFirstMethodUsingStrings(classLoader, StringMatchType.Contains, "forwardable", "FMessageFactory/newFMessageForForward/thumbnail");
+            } else {
+                // 2.24.18.xx returns one method
+                result = results[0];
+            }
             return result;
         });
     }

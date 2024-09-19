@@ -1,9 +1,14 @@
-[ANTI REVOKE MESSAGE]
-* Fixed the icon not appearing bug
+[HIDE RECEIPTS]
+* Fix bug in hide receipts in chat
 
-[CUSTOM COLORS TEXT COMPOSER]
-* Added option to disable/enable custom text colors in composer
+[CUSTOM WALLPAPER]
+* Fix bug in select wallpaper
 
-[WA BUSINESS]
-* Added support 2.24.17.xx
+[WHATSAPP]
+* Fix crash on open archived and others settings
 
+[OTHERS]
+* Fix missing icon download in View Once Download and Picture Profile Download
+
+[WA ENHANCER]
+* Update translations
