@@ -26,6 +26,8 @@ import com.wmods.wppenhacer.xposed.utils.ReflectionUtils;
 import com.wmods.wppenhacer.xposed.utils.ResId;
 import com.wmods.wppenhacer.xposed.utils.Utils;
 
+import org.json.JSONObject;
+
 import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -43,7 +45,7 @@ import de.robv.android.xposed.XposedHelpers;
 
 public class WppCore {
 
-    static final HashSet<ActivityChangeState> listenerChat = new HashSet<>();
+    static final HashSet<ActivityChangeState> listenerAcitivity = new HashSet<>();
     @SuppressLint("StaticFieldLeak")
     static Activity mCurrentActivity;
     static LinkedHashSet<Activity> activities = new LinkedHashSet<>();
@@ -357,6 +359,21 @@ public class WppCore {
         return privPrefs.getString(key, defaultValue);
     }
 
+    public static JSONObject getPrivJSON(String key, JSONObject defaultValue) {
+        var jsonStr = privPrefs.getString(key, null);
+        if (jsonStr == null) return defaultValue;
+        try {
+            return new JSONObject(jsonStr);
+        } catch (Exception e) {
+            return defaultValue;
+        }
+    }
+
+    @SuppressLint("ApplySharedPref")
+    public static void setPrivJSON(String key, JSONObject value) {
+        privPrefs.edit().putString(key, value == null ? null : value.toString()).commit();
+    }
+
     @SuppressLint("ApplySharedPref")
     public static void removePrivKey(String s) {
         if (s != null && privPrefs.contains(s))
@@ -373,8 +390,8 @@ public class WppCore {
         return privPrefs.getBoolean(key, defaultValue);
     }
 
-    public static void addListenerChat(ActivityChangeState listener) {
-        listenerChat.add(listener);
+    public static void addListenerActivity(ActivityChangeState listener) {
+        listenerAcitivity.add(listener);
     }
 
     public static WaeIIFace getClientBridge() throws Exception {

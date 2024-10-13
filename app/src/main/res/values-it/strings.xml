@@ -371,6 +371,18 @@
     <string name="bootloader_spoofer_sum">Usa questo se sei stato bannato e stai ricevendo il messaggio Whatsapp non ufficiale</string>
     <string name="not_available">non disponibile</string>
     <string name="select_all">Seleziona Tutto</string>
-    <string name="custom_colors_for_text_status">Custom colors for text status</string>
-    <string name="custom_colors_for_text_status_sum">Press and hold on the color selector in the status to customize it</string>
+    <string name="custom_colors_for_text_status">Colori personalizzati per il testo dello stato</string>
+    <string name="custom_colors_for_text_status_sum">Premi e tieni premuto il selettore dei colori nello stato per personalizzarlo</string>
+    <string name="enable_wa_enhancer_button">Abilita Pulsante Wa Enhancer</string>
+    <string name="enable_wa_enhancer_button_sum">Aggiungi pulsante nella schermata Home per aprire Wa Enhancer</string>
+    <string name="custom_privacy">Privacy Personalizzata</string>
+    <string name="custom_privacy_sum">Abilita/Disabilita Privacy Personalizzata</string>
+    <string name="custom_privacy_per_contact">Custom Privacy per contact</string>
+    <string name="custom_privacy_per_contact_sum">Activate the custom privacy button on the contact information screen</string>
+    <string name="assemblyai">Enable AssemblyAI</string>
+    <string name="assemblyai_sum">Replaces the default Whatsapp transcription with AssemblyAI</string>
+    <string name="assemblyai_key">AssemblyAI key</string>
+    <string name="assemblyai_key_sum">AssemblyAI API access key (Login to the website and create an account to get your key)</string>
+    <string name="google_translate">Enable Google Translate</string>
+    <string name="google_translate_sum">Replaces Whatsapp\'s native translator with Google Translate</string>
 </resources>

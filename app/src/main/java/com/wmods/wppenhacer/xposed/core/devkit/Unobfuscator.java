@@ -865,15 +865,47 @@ public class Unobfuscator {
         return UnobfuscatorCache.getInstance().getMethod(loader, () -> {
             Method method = findFirstMethodUsingStrings(loader, StringMatchType.Contains, "ConversationViewFiller/setParentGroupProfilePhoto");
             if (method == null) throw new Exception("OnChangeStatus method not found");
+
+            // for 19.xx, the current implementation returns wrong method
+            if (method.getParameterCount() < 6) {
+                ClassData declaringClassData = dexkit.getClassData(method.getDeclaringClass());
+                if (declaringClassData == null) throw new Exception("OnChangeStatus method not found");
+
+                Class<?> arg1Class = findFirstClassUsingStrings(loader, StringMatchType.Contains, "problematic contact:");
+                MethodDataList methodData = declaringClassData.findMethod(
+                        FindMethod.create().matcher(MethodMatcher.create().paramCount(6, 8)));
+
+                for (var methodItem : methodData) {
+                    var paramTypes = methodItem.getParamTypes();
+
+                    if (paramTypes.get(0).getInstance(loader) == arg1Class &&
+                            paramTypes.get(1).getInstance(loader) == arg1Class) {
+                        method = methodItem.getMethodInstance(loader);
+                        break;
+                    }
+                }
+            }
+
             return method;
         });
+    }
+
+    public synchronized static Class<?> loadViewHolder(ClassLoader loader) throws Exception {
+        Class<?> classViewHolder = XposedHelpers.findClassIfExists("com.whatsapp.conversationslist.ViewHolder", loader);
+
+        // for 20.xx, the current implementation returns null
+        if (classViewHolder == null) {
+            Method method = findFirstMethodUsingStrings(loader, StringMatchType.Contains, "conversations/click/jid ");
+            classViewHolder = method.getParameterTypes()[0];
+        }
+
+        return classViewHolder;
     }
 
     public synchronized static Field loadViewHolderField1(ClassLoader loader) throws Exception {
         return UnobfuscatorCache.getInstance().getField(loader, () -> {
             Class<?> class1 = loadOnChangeStatus(loader).getDeclaringClass().getSuperclass();
-            Class<?> classViewHolder = XposedHelpers.findClass("com.whatsapp.conversationslist.ViewHolder", loader);
-            return ReflectionUtils.getFieldByType(class1, classViewHolder);
+            return ReflectionUtils.getFieldByType(class1, loadViewHolder(loader));
         });
     }
 
@@ -1002,6 +1034,15 @@ public class Unobfuscator {
             return methodData.get(0).getMethodInstance(loader);
         });
     }
+
+    public synchronized static Method loadOriginalMessageKey(ClassLoader loader) throws Exception {
+        return UnobfuscatorCache.getInstance().getMethod(loader, () -> {
+            var method = findFirstMethodUsingStrings(loader, StringMatchType.Contains, "FMessageUtil/getOriginalMessageKeyIfEdited");
+            if (method == null) throw new RuntimeException("MessageEdit method not found");
+            return method;
+        });
+    }
+
 
     public synchronized static Method loadNewMessageWithMediaMethod(ClassLoader loader) throws Exception {
         var clazzMessage = Objects.requireNonNull(dexkit.getClassData(loadFMessageClass(loader)));
@@ -1365,8 +1406,14 @@ public class Unobfuscator {
             var methods = dexkit.findMethod(new FindMethod().matcher(new MethodMatcher().addInvoke(DexSignUtil.getMethodDescriptor(constructor))));
             if (methods.isEmpty()) throw new RuntimeException("FilterInit method not found");
             var cFrag = XposedHelpers.findClass("com.whatsapp.conversationslist.ConversationsFragment", loader);
-            var method = methods.stream().filter(m -> m.getParamCount() == 1 && m.getParamTypes().get(0).getName().equals(cFrag.getName())).findFirst().orElse(null);
+            var method = methods.stream().filter(m -> Arrays.asList(1, 2).contains(m.getParamCount()) && m.getParamTypes().get(0).getName().equals(cFrag.getName())).findFirst().orElse(null);
             if (method == null) throw new RuntimeException("FilterInit method not found 2");
+
+            // for 20.xx, it returned with 2 parameter count
+            if (method.getParamCount() == 2) {
+                method = method.getDeclaredClass().findMethod(FindMethod.create().matcher(new MethodMatcher().addInvoke(DexSignUtil.getMethodDescriptor(method.getMethodInstance(loader))))).singleOrNull();
+                if (method == null) throw new RuntimeException("FilterInit method not found 3");
+            }
             return method.getMethodInstance(loader);
         });
     }
@@ -1397,7 +1444,7 @@ public class Unobfuscator {
 
     public synchronized static Method loadNextStatusRunMethod(ClassLoader classLoader) throws Exception {
         return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> {
-            var methodList = dexkit.findMethod(new FindMethod().matcher(new MethodMatcher().addUsingString("SequentialVoiceMemoPlayer/playMiddleTone").name("run")));
+            var methodList = dexkit.findMethod(new FindMethod().matcher(new MethodMatcher().addUsingString("playMiddleTone").name("run")));
             if (methodList.isEmpty()) throw new RuntimeException("RunNextStatus method not found");
             return methodList.get(0).getMethodInstance(classLoader);
         });
@@ -1672,5 +1719,18 @@ public class Unobfuscator {
         var method = findFirstMethodUsingStrings(classLoader, StringMatchType.Contains, "cyanogen");
         if (method == null) throw new RuntimeException("CheckCustomRom method not found");
         return method;
+    }
+
+    public static Class loadGetContactInfoClass(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getClass(classLoader, () -> findFirstClassUsingStrings(classLoader, StringMatchType.Contains, "unknown@unknown"));
+
+    }
+
+    public static Method loadTranscribeMethod(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> findFirstMethodUsingStrings(classLoader, StringMatchType.Contains, "transcribe: starting transcription"));
+    }
+
+    public static Method loadCheckSupportLanguage(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> findFirstMethodUsingStrings(classLoader, StringMatchType.Equals, "Unsupported language"));
     }
 }

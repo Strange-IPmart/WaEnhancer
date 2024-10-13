@@ -21,15 +21,20 @@ public class TypePrivacy extends Feature {
     @Override
     public void doHook() throws Throwable {
         var ghostmode = WppCore.getPrivBoolean("ghostmode", false);
-        var ghostmode_t = prefs.getBoolean("ghostmode_t", false) || ghostmode;
-        var ghostmode_r = prefs.getBoolean("ghostmode_r", false) || ghostmode;
+        var ghostmode_t = prefs.getBoolean("ghostmode_t", false);
+        var ghostmode_r = prefs.getBoolean("ghostmode_r", false);
         Method method = Unobfuscator.loadGhostModeMethod(classLoader);
         logDebug(Unobfuscator.getMethodDescriptor(method));
         XposedBridge.hookMethod(method, new XC_MethodHook() {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) {
                 var p1 = (int) param.args[2];
-                if ((p1 == 1 && ghostmode_r) || (p1 == 0 && ghostmode_t)) {
+                var userJid = param.args[1];
+                var number = WppCore.stripJID(WppCore.getRawString(userJid));
+                var privacy = CustomPrivacy.getJSON(number);
+                var customHideTyping = privacy.optBoolean("HideTyping", ghostmode_t);
+                var customHideRecording = privacy.optBoolean("HideRecording", ghostmode_r);
+                if ((p1 == 1 && (customHideRecording || ghostmode)) || (p1 == 0 && (customHideTyping || ghostmode))) {
                     param.setResult(null);
                 }
             }

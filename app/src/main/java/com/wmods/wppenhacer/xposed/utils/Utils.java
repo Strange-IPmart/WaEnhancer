@@ -35,12 +35,14 @@ import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import de.robv.android.xposed.XSharedPreferences;
 import de.robv.android.xposed.XposedBridge;
 
 public class Utils {
 
     private static final ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     private static final ExecutorService executorCachedService = Executors.newCachedThreadPool();
+    public static XSharedPreferences xprefs;
 
     @NonNull
     public static Application getApplication() {
@@ -215,6 +217,13 @@ public class Utils {
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
+    }
+
+    public static String getAuthorFromCss(String code) {
+        if (code == null) return null;
+        var match = Pattern.compile("author\\s*=\\s*(.*?)\n").matcher(code);
+        if (!match.find()) return null;
+        return match.group(1);
     }
 
     @FunctionalInterface

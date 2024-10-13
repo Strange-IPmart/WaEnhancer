@@ -50,10 +50,12 @@ import com.wmods.wppenhacer.xposed.features.media.DownloadViewOnce;
 import com.wmods.wppenhacer.xposed.features.media.MediaPreview;
 import com.wmods.wppenhacer.xposed.features.media.MediaQuality;
 import com.wmods.wppenhacer.xposed.features.media.StatusDownload;
+import com.wmods.wppenhacer.xposed.features.others.AudioTranscript;
 import com.wmods.wppenhacer.xposed.features.others.Channels;
 import com.wmods.wppenhacer.xposed.features.others.ChatFilters;
 import com.wmods.wppenhacer.xposed.features.others.CopyStatus;
 import com.wmods.wppenhacer.xposed.features.others.DebugFeature;
+import com.wmods.wppenhacer.xposed.features.others.GoogleTranslate;
 import com.wmods.wppenhacer.xposed.features.others.GroupAdmin;
 import com.wmods.wppenhacer.xposed.features.others.MenuHome;
 import com.wmods.wppenhacer.xposed.features.others.Stickers;
@@ -61,6 +63,7 @@ import com.wmods.wppenhacer.xposed.features.others.TextStatusComposer;
 import com.wmods.wppenhacer.xposed.features.others.ToastViewer;
 import com.wmods.wppenhacer.xposed.features.privacy.AntiWa;
 import com.wmods.wppenhacer.xposed.features.privacy.CallPrivacy;
+import com.wmods.wppenhacer.xposed.features.privacy.CustomPrivacy;
 import com.wmods.wppenhacer.xposed.features.privacy.DndMode;
 import com.wmods.wppenhacer.xposed.features.privacy.FreezeLastSeen;
 import com.wmods.wppenhacer.xposed.features.privacy.HideChat;
@@ -103,6 +106,7 @@ public class FeatureLoader {
             return;
         }
         Feature.DEBUG = pref.getBoolean("enablelogs", true);
+        Utils.xprefs = pref;
 
         XposedHelpers.findAndHookMethod(Instrumentation.class, "callApplicationOnCreate", Application.class, new XC_MethodHook() {
             @SuppressWarnings("deprecation")
@@ -129,7 +133,7 @@ public class FeatureLoader {
                     registerReceivers();
                     mApp.registerActivityLifecycleCallbacks(new WaCallback());
                     sendEnabledBroadcast(mApp);
-//                  XposedHelpers.setStaticIntField(XposedHelpers.findClass("com.whatsapp.util.Log", loader), "level", 5);
+//                    XposedHelpers.setStaticIntField(XposedHelpers.findClass("com.whatsapp.util.Log", loader), "level", 5);
                     var timemillis2 = System.currentTimeMillis() - timemillis;
                     XposedBridge.log("Loaded Hooks in " + timemillis2 + "ms");
                 } catch (Throwable e) {
@@ -268,7 +272,10 @@ public class FeatureLoader {
                 TextStatusComposer.class,
                 ToastViewer.class,
                 MenuHome.class,
-                AntiWa.class
+                AntiWa.class,
+                CustomPrivacy.class,
+                AudioTranscript.class,
+                GoogleTranslate.class
         };
         XposedBridge.log("Loading Plugins");
         var executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());

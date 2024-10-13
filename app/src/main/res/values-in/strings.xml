@@ -380,6 +380,18 @@ Harap gunakan versi WhatsApp yang didukung!</string>
     <string name="bootloader_spoofer_sum">Gunakan ini jika Anda telah diblokir dan menerima pesan WhatsApp tidak resmi</string>
     <string name="not_available">tidak tersedia</string>
     <string name="select_all">Pilih semua</string>
-    <string name="custom_colors_for_text_status">Custom colors for text status</string>
-    <string name="custom_colors_for_text_status_sum">Press and hold on the color selector in the status to customize it</string>
+    <string name="custom_colors_for_text_status">Warna Khusus Untuk Status Teks</string>
+    <string name="custom_colors_for_text_status_sum">Tekan dan tahan pemilih warna dalam status untuk menyesuaikannya</string>
+    <string name="enable_wa_enhancer_button">Tombol Wa Enhancer</string>
+    <string name="enable_wa_enhancer_button_sum">Tampilkan tombol di Layar Beranda untuk membuka Wa Enhancer</string>
+    <string name="custom_privacy">Privasi Kustom</string>
+    <string name="custom_privacy_sum">Aktifkan/Nonaktifkan Privasi Kustom</string>
+    <string name="custom_privacy_per_contact">Custom Privacy per contact</string>
+    <string name="custom_privacy_per_contact_sum">Activate the custom privacy button on the contact information screen</string>
+    <string name="assemblyai">Enable AssemblyAI</string>
+    <string name="assemblyai_sum">Replaces the default Whatsapp transcription with AssemblyAI</string>
+    <string name="assemblyai_key">AssemblyAI key</string>
+    <string name="assemblyai_key_sum">AssemblyAI API access key (Login to the website and create an account to get your key)</string>
+    <string name="google_translate">Enable Google Translate</string>
+    <string name="google_translate_sum">Replaces Whatsapp\'s native translator with Google Translate</string>
 </resources>

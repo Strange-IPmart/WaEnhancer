@@ -31,7 +31,7 @@ android {
         minSdk = 28
         targetSdk = 34
         versionCode = 130
-        versionName = "1.3.1-DEV ($gitHash)"
+        versionName = "1.4.0-DEV ($gitHash)"
         multiDexEnabled = true
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -143,6 +143,7 @@ dependencies {
     implementation(libs.filepicker)
     implementation(libs.betterypermissionhelper)
     implementation(libs.bcpkix.jdk18on)
+    implementation("com.assemblyai:assemblyai-java:3.0.0")
 }
 
 configurations.all {
