@@ -59,12 +59,11 @@ public class WppCore {
     private static Object mActionUser;
     private static SQLiteDatabase mWaDatabase;
     public static BaseClient client;
-    private static boolean isBridgeInitialized;
+    private static Object mCachedMessageStore;
 
 
     public static void Initialize(ClassLoader loader) throws Exception {
         privPrefs = Utils.getApplication().getSharedPreferences("WaGlobal", Context.MODE_PRIVATE);
-
 
         // init UserJID
         var mSendReadClass = XposedHelpers.findClass("com.whatsapp.jobqueue.job.SendReadReceiptJob", loader);
@@ -86,6 +85,7 @@ public class WppCore {
             }
         });
 
+        // ActionUser
         var actionUser = Unobfuscator.loadActionUser(loader);
         XposedBridge.hookAllConstructors(actionUser, new XC_MethodHook() {
             @Override
@@ -93,6 +93,16 @@ public class WppCore {
                 mActionUser = param.thisObject;
             }
         });
+
+        // CachedMessageStore
+        var cachedMessageStore = Unobfuscator.loadCachedMessageStore(loader);
+        XposedBridge.hookAllConstructors(cachedMessageStore, new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                mCachedMessageStore = param.thisObject;
+            }
+        });
+
         // Load wa database
         loadWADatabase();
         initBridge(Utils.getApplication());
@@ -135,7 +145,6 @@ public class WppCore {
             CompletableFuture<Boolean> canLoadFuture = baseClient.connect();
             Boolean canLoad = canLoadFuture.get();
             if (!canLoad) throw new Exception();
-            isBridgeInitialized = true;
         } catch (Exception e) {
             return false;
         }
@@ -258,6 +267,17 @@ public class WppCore {
         return name == null ? "" : name;
     }
 
+    public static Object getFMessageFromKey(Object messageKey) {
+        if (messageKey == null) return null;
+        try {
+            var methodResult = ReflectionUtils.findMethodUsingFilter(mCachedMessageStore.getClass(), (method) -> method.getParameterCount() == 1 && FMessageWpp.Key.TYPE.isAssignableFrom(method.getParameterTypes()[0]));
+            return ReflectionUtils.callMethod(methodResult, mCachedMessageStore, messageKey);
+        } catch (Exception e) {
+            XposedBridge.log(e);
+            return null;
+        }
+    }
+
 
     public static Object createUserJid(String rawjid) {
         var genInstance = XposedHelpers.newInstance(mGenJidClass);
@@ -289,7 +309,12 @@ public class WppCore {
 
     public static String stripJID(String str) {
         try {
-            return (str.contains("@g.us") || str.contains("@s.whatsapp.net") || str.contains("@broadcast")) ? str.substring(0, str.indexOf("@")) : str;
+            if (str.contains(".") && str.contains("@") && str.indexOf(".") < str.indexOf("@")) {
+                return str.substring(0, str.indexOf("."));
+            } else if (str.contains("@g.us") || str.contains("@s.whatsapp.net") || str.contains("@broadcast")) {
+                return str.substring(0, str.indexOf("@"));
+            }
+            return str;
         } catch (Exception e) {
             XposedBridge.log(e.getMessage());
             return str;
@@ -347,6 +372,12 @@ public class WppCore {
         if (mCurrentActivity == null) return null;
         Class<?> conversation = XposedHelpers.findClass("com.whatsapp.Conversation", mCurrentActivity.getClassLoader());
         if (conversation.isInstance(mCurrentActivity)) return mCurrentActivity;
+
+        // for tablet UI, they're using HomeActivity instead of Conversation
+        // TODO: Add more checks for ConversationFragment
+        Class<?> home = XposedHelpers.findClass("com.whatsapp.HomeActivity", mCurrentActivity.getClassLoader());
+        if (mCurrentActivity.getResources().getConfiguration().smallestScreenWidthDp >= 600 && home.isInstance(mCurrentActivity))
+            return mCurrentActivity;
         return null;
     }
 

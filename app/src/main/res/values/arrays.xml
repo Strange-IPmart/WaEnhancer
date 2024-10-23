@@ -120,12 +120,15 @@
         <item>2.24.18.xx</item>
         <item>2.24.19.xx</item>
         <item>2.24.20.xx</item>
+        <item>2.24.21.xx</item>
     </string-array>
     <string-array name="supported_versions_business">
         <item>2.24.16.xx</item>
         <item>2.24.17.xx</item>
         <item>2.24.18.xx</item>
         <item>2.24.19.xx</item>
+        <item>2.24.20.xx</item>
+        <item>2.24.21.xx</item>
     </string-array>
     <string-array name="image_picker">
         <item>image/*</item>
@@ -165,5 +168,15 @@
         <item>Shrink</item>
         <item>Flip</item>
         <item>Hyperspace out</item>
+    </string-array>
+    <string-array name="custom_privacy_entries">
+        <item>@string/antirevoke_buttons_desable</item>
+        <item>@string/show_contact_info</item>
+        <item>@string/show_contact_info_menu</item>
+    </string-array>
+    <string-array name="custom_privacy_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
     </string-array>
 </resources>

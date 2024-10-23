@@ -4,7 +4,6 @@ import android.annotation.SuppressLint;
 import android.os.BaseBundle;
 import android.os.Message;
 import android.text.TextUtils;
-import android.view.GestureDetector;
 import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,25 +12,30 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
-import com.wmods.wppenhacer.listeners.DoubleTapListener;
 import com.wmods.wppenhacer.xposed.core.Feature;
 import com.wmods.wppenhacer.xposed.core.WppCore;
 import com.wmods.wppenhacer.xposed.core.devkit.Unobfuscator;
 import com.wmods.wppenhacer.xposed.utils.AnimationUtil;
+import com.wmods.wppenhacer.xposed.utils.DebugUtils;
 import com.wmods.wppenhacer.xposed.utils.ReflectionUtils;
 import com.wmods.wppenhacer.xposed.utils.ResId;
 import com.wmods.wppenhacer.xposed.utils.Utils;
 
+import org.json.JSONObject;
+
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.XSharedPreferences;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
+import okhttp3.OkHttpClient;
 
 public class Others extends Feature {
 
@@ -107,6 +111,7 @@ public class Others extends Feature {
         propsBoolean.put(9578, true);  // Enable Privacy Checkup
         propsInteger.put(8135, 2);  // Call Filters
         propsBoolean.put(9141, true);  // Enable Translate Message
+        propsBoolean.put(8925, true);  // Enable Translate Message
 
         propsBoolean.put(10380, false); // fix crash bug in Settings/Archived
 
@@ -160,6 +165,7 @@ public class Others extends Feature {
         }
 
         customPlayBackSpeed();
+
         showOnline(showOnline);
 
         animationList();
@@ -168,6 +174,80 @@ public class Others extends Feature {
 
         doubleTapReaction();
 
+        alwaysOnline();
+
+        callInfo();
+
+    }
+
+    private void callInfo() throws Exception {
+        if (!prefs.getBoolean("call_info", false))
+            return;
+
+        var clsCallEventCallback = classLoader.loadClass("com.whatsapp.calling.service.VoiceServiceEventCallback");
+        for (Method method : clsCallEventCallback.getDeclaredMethods()) {
+            XposedBridge.hookMethod(method, DebugUtils.getDebugMethodHook(false, false, true, true));
+        }
+
+
+        Class<?> clsWamCall = classLoader.loadClass("com.whatsapp.fieldstats.events.WamCall");
+
+        XposedBridge.hookAllMethods(clsCallEventCallback, "fieldstatsReady",
+                new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                        if (clsWamCall.isInstance(param.args[0])) {
+
+                            Object callinfo = XposedHelpers.callMethod(param.thisObject, "getCallInfo");
+                            if (callinfo == null)
+                                return;
+                            var userJid = XposedHelpers.callMethod(callinfo, "getPeerJid");
+                            CompletableFuture.runAsync(() -> {
+                                try {
+                                    showCallInformation(param.args[0], userJid);
+                                } catch (Exception e) {
+                                    logDebug(e);
+                                }
+                            });
+                        }
+                    }
+                });
+    }
+
+    private void showCallInformation(Object wamCall, Object userJid) throws Exception {
+        if (WppCore.isGroup(WppCore.getRawString(userJid)))
+            return;
+        var sb = new StringBuilder();
+
+        var contact = WppCore.getContactName(userJid);
+        if (!TextUtils.isEmpty(contact))
+            sb.append("Contact: ").append(contact).append("\n");
+        sb.append("Number: ").append("+").append(WppCore.stripJID(WppCore.getRawString(userJid))).append("\n");
+
+        var ip = (String) XposedHelpers.getObjectField(wamCall, "callPeerIpStr");
+        if (ip != null) {
+            var client = new OkHttpClient();
+            var url = "http://ip-api.com/json/" + ip;
+            var request = new okhttp3.Request.Builder().url(url).build();
+            var content = client.newCall(request).execute().body().string();
+            var json = new JSONObject(content);
+            var country = json.getString("country");
+            var city = json.getString("city");
+            sb.append("Country: ").append(country).append("\n");
+            sb.append("City: ").append(city).append("\n");
+            sb.append("IP: ").append(ip).append("\n");
+        }
+        var platform = (String) XposedHelpers.getObjectField(wamCall, "callPeerPlatform");
+        if (platform != null) sb.append("Platform: ").append(platform).append("\n");
+        var wppVersion = (String) XposedHelpers.getObjectField(wamCall, "callPeerAppVersion");
+        if (wppVersion != null) sb.append("WhatsApp Version: ").append(wppVersion).append("\n");
+        Utils.showNotification("Call Information", sb.toString());
+    }
+
+    private void alwaysOnline() throws Exception {
+        if (!prefs.getBoolean("always_online", false)) return;
+        var stateChange = Unobfuscator.loadStateChangeMethod(classLoader);
+        XposedBridge.hookMethod(stateChange, XC_MethodReplacement.DO_NOTHING);
     }
 
     private void doubleTapReaction() throws Exception {
@@ -185,21 +265,45 @@ public class Others extends Feature {
             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                 var viewGroup = (View) param.thisObject;
                 if (viewGroup == null) return;
-                var gestureDetector = new GestureDetector(viewGroup.getContext(), new DoubleTapListener(() -> {
-                    var reactionView = (ViewGroup) viewGroup.findViewById(Utils.getID("reactions_bubble_layout", "id"));
-                    if (reactionView != null && reactionView.getVisibility() == View.VISIBLE) {
-                        for (int i = 0; i < reactionView.getChildCount(); i++) {
-                            if (reactionView.getChildAt(i) instanceof TextView textView) {
-                                if (textView.getText().toString().contains(emoji)) {
-                                    WppCore.sendReaction("", param.args[2]);
-                                    return;
+
+                var gestureDetector = new Object() {
+
+                    public void doubleClick(View view, Object objMessage) {
+                        var reactionView = (ViewGroup) view.findViewById(Utils.getID("reactions_bubble_layout", "id"));
+                        if (reactionView != null && reactionView.getVisibility() == View.VISIBLE) {
+                            for (int i = 0; i < reactionView.getChildCount(); i++) {
+                                if (reactionView.getChildAt(i) instanceof TextView textView) {
+                                    if (textView.getText().toString().contains(emoji)) {
+                                        WppCore.sendReaction("", objMessage);
+                                        Utils.showToast(emoji, 1);
+                                        return;
+                                    }
                                 }
                             }
                         }
+                        WppCore.sendReaction(emoji, param.args[2]);
                     }
-                    WppCore.sendReaction(emoji, param.args[2]);
-                }));
-                viewGroup.setOnTouchListener((v, event) -> gestureDetector.onTouchEvent(event));
+                };
+
+                var auxClick = new Object() {
+                    long lastClick = 0;
+                    long clicks = 0;
+                };
+
+                viewGroup.setOnClickListener(v -> {
+                    if (auxClick.lastClick == 0 || System.currentTimeMillis() - auxClick.lastClick < 1000) {
+                        auxClick.lastClick = System.currentTimeMillis();
+                        auxClick.clicks++;
+                    } else {
+                        auxClick.lastClick = 0;
+                        auxClick.clicks = 0;
+                    }
+                    if (auxClick.clicks > 1) {
+                        auxClick.clicks = 0;
+                        auxClick.lastClick = 0;
+                        gestureDetector.doubleClick(v, param.args[2]);
+                    }
+                });
             }
         });
     }

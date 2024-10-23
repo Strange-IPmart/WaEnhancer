@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -53,6 +54,7 @@ import de.robv.android.xposed.XposedHelpers;
 
 public class Unobfuscator {
 
+    private static final String TAG = "Unobfuscator";
     private static DexKitBridge dexkit;
 
     public static final HashMap<String, Object> cache = new HashMap<>();
@@ -535,10 +537,13 @@ public class Unobfuscator {
     public synchronized static Field loadStatusDownloadFileField(ClassLoader classLoader) throws Exception {
         return UnobfuscatorCache.getInstance().getField(classLoader, () -> {
             var clazz = loadStatusDownloadMediaClass(classLoader);
-            var clazz2 = clazz.getField("A01").getType();
-            var field = ReflectionUtils.getFieldByType(clazz2, File.class);
-            if (field == null) throw new Exception("StatusDownloadFile field not found");
-            return field;
+            for (Field clazzField : clazz.getFields()) {
+                var clazz2 = clazzField.getType();
+                var field = ReflectionUtils.getFieldByType(clazz2, File.class);
+                if (field != null) return field;
+            }
+
+            throw new Exception("StatusDownloadFile field not found");
         });
     }
 
@@ -599,6 +604,12 @@ public class Unobfuscator {
 
     public synchronized static Method loadViewOnceStoreMethod(ClassLoader loader) throws Exception {
         var method = findFirstMethodUsingStrings(loader, StringMatchType.Contains, "INSERT_VIEW_ONCE_SQL");
+        if (method == null) throw new Exception("ViewOnce class not found");
+        return method;
+    }
+
+    public synchronized static Method loadViewOnceChangeMethod(ClassLoader loader) throws Exception {
+        var method = findFirstMethodUsingStrings(loader, StringMatchType.Contains, "com.whatsapp.messaging.ViewOnceViewerActivity");
         if (method == null) throw new Exception("ViewOnce class not found");
         return method;
     }
@@ -869,7 +880,8 @@ public class Unobfuscator {
             // for 19.xx, the current implementation returns wrong method
             if (method.getParameterCount() < 6) {
                 ClassData declaringClassData = dexkit.getClassData(method.getDeclaringClass());
-                if (declaringClassData == null) throw new Exception("OnChangeStatus method not found");
+                if (declaringClassData == null)
+                    throw new Exception("OnChangeStatus method not found");
 
                 Class<?> arg1Class = findFirstClassUsingStrings(loader, StringMatchType.Contains, "problematic contact:");
                 MethodDataList methodData = declaringClassData.findMethod(
@@ -1070,7 +1082,13 @@ public class Unobfuscator {
             if (methodData == null) throw new RuntimeException("GetEditMessage method not found");
             var invokes = methodData.getInvokes();
             for (var invoke : invokes) {
+                // pre 21.xx method
                 if (invoke.getParamTypes().isEmpty() && Objects.equals(invoke.getDeclaredClass(), methodData.getParamTypes().get(0))) {
+                    return invoke.getMethodInstance(loader);
+                }
+
+                // 21.xx+ method (static)
+                if (Modifier.isStatic(invoke.getMethodInstance(loader).getModifiers()) && Objects.equals(invoke.getParamTypes().get(0), methodData.getParamTypes().get(0))) {
                     return invoke.getMethodInstance(loader);
                 }
             }
@@ -1703,34 +1721,61 @@ public class Unobfuscator {
         });
     }
 
-    public static Method[] loadRootDetector(ClassLoader classLoader) {
+    public static synchronized Method[] loadRootDetector(ClassLoader classLoader) {
         var methods = findAllMethodUsingStrings(classLoader, StringMatchType.Contains, "/system/bin/su");
         if (methods.length == 0) throw new RuntimeException("RootDetector method not found");
         return methods;
     }
 
-    public static Method loadCheckEmulator(ClassLoader classLoader) throws Exception {
+    public static synchronized Method loadCheckEmulator(ClassLoader classLoader) throws Exception {
         var method = findFirstMethodUsingStrings(classLoader, StringMatchType.Contains, "Android SDK built for x86");
         if (method == null) throw new RuntimeException("CheckEmulator method not found");
         return method;
     }
 
-    public static Method loadCheckCustomRom(ClassLoader classLoader) throws Exception {
+    public static synchronized Method loadCheckCustomRom(ClassLoader classLoader) throws Exception {
         var method = findFirstMethodUsingStrings(classLoader, StringMatchType.Contains, "cyanogen");
         if (method == null) throw new RuntimeException("CheckCustomRom method not found");
         return method;
     }
 
-    public static Class loadGetContactInfoClass(ClassLoader classLoader) throws Exception {
+    public static synchronized Class loadGetContactInfoClass(ClassLoader classLoader) throws Exception {
         return UnobfuscatorCache.getInstance().getClass(classLoader, () -> findFirstClassUsingStrings(classLoader, StringMatchType.Contains, "unknown@unknown"));
 
     }
 
-    public static Method loadTranscribeMethod(ClassLoader classLoader) throws Exception {
+    public static synchronized Method loadTranscribeMethod(ClassLoader classLoader) throws Exception {
         return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> findFirstMethodUsingStrings(classLoader, StringMatchType.Contains, "transcribe: starting transcription"));
     }
 
-    public static Method loadCheckSupportLanguage(ClassLoader classLoader) throws Exception {
+    public static synchronized Method loadCheckSupportLanguage(ClassLoader classLoader) throws Exception {
         return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> findFirstMethodUsingStrings(classLoader, StringMatchType.Equals, "Unsupported language"));
+    }
+
+    public static synchronized Class loadUnkTranscript(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getClass(classLoader, () -> {
+            var loadTranscribe = loadTranscribeMethod(classLoader);
+            var callbackClass = loadTranscribe.getParameterTypes()[1];
+            var onComplete = ReflectionUtils.findMethodUsingFilter(callbackClass, method -> method.getParameterCount() == 4);
+            var resultTypeClass = onComplete.getParameterTypes()[0].getName();
+            Log.i(TAG, resultTypeClass);
+            var classDataList = dexkit.findClass(FindClass.create().matcher(ClassMatcher.create().addUsingString("Unknown").superClass(resultTypeClass)));
+            if (classDataList.isEmpty())
+                throw new RuntimeException("UnkTranscript class not found");
+            return classDataList.get(0).getInstance(classLoader);
+        });
+    }
+
+    public static synchronized Method loadStateChangeMethod(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> findFirstMethodUsingStrings(classLoader, StringMatchType.Contains, "presencestatemanager/startTransitionToUnavailable/new-state"));
+    }
+
+    public static synchronized Class loadCachedMessageStore(ClassLoader loader) throws Exception {
+        return UnobfuscatorCache.getInstance().getClass(loader, () -> {
+            var cacheMsClass = findFirstClassUsingStrings(loader, StringMatchType.Contains, "CachedMessageStore/getMessage/key");
+            if (cacheMsClass == null)
+                throw new RuntimeException("CachedMessageStore class not found");
+            return cacheMsClass;
+        });
     }
 }
