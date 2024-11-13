@@ -12,18 +12,17 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
+import com.wmods.wppenhacer.listeners.OnMultiClickListener;
 import com.wmods.wppenhacer.xposed.core.Feature;
 import com.wmods.wppenhacer.xposed.core.WppCore;
 import com.wmods.wppenhacer.xposed.core.devkit.Unobfuscator;
 import com.wmods.wppenhacer.xposed.utils.AnimationUtil;
-import com.wmods.wppenhacer.xposed.utils.DebugUtils;
 import com.wmods.wppenhacer.xposed.utils.ReflectionUtils;
 import com.wmods.wppenhacer.xposed.utils.ResId;
 import com.wmods.wppenhacer.xposed.utils.Utils;
 
 import org.json.JSONObject;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Objects;
@@ -185,11 +184,6 @@ public class Others extends Feature {
             return;
 
         var clsCallEventCallback = classLoader.loadClass("com.whatsapp.calling.service.VoiceServiceEventCallback");
-        for (Method method : clsCallEventCallback.getDeclaredMethods()) {
-            XposedBridge.hookMethod(method, DebugUtils.getDebugMethodHook(false, false, true, true));
-        }
-
-
         Class<?> clsWamCall = classLoader.loadClass("com.whatsapp.fieldstats.events.WamCall");
 
         XposedBridge.hookAllMethods(clsCallEventCallback, "fieldstatsReady",
@@ -218,12 +212,10 @@ public class Others extends Feature {
         if (WppCore.isGroup(WppCore.getRawString(userJid)))
             return;
         var sb = new StringBuilder();
-
         var contact = WppCore.getContactName(userJid);
-        if (!TextUtils.isEmpty(contact))
-            sb.append("Contact: ").append(contact).append("\n");
-        sb.append("Number: ").append("+").append(WppCore.stripJID(WppCore.getRawString(userJid))).append("\n");
-
+        var number = WppCore.stripJID(WppCore.getRawString(userJid));
+        if (!TextUtils.isEmpty(contact)) sb.append(String.format(Utils.getApplication().getString(ResId.string.contact_s), contact)).append("\n");
+        sb.append(String.format(Utils.getApplication().getString(ResId.string.phone_number_s), number)).append("\n");
         var ip = (String) XposedHelpers.getObjectField(wamCall, "callPeerIpStr");
         if (ip != null) {
             var client = new OkHttpClient();
@@ -233,15 +225,15 @@ public class Others extends Feature {
             var json = new JSONObject(content);
             var country = json.getString("country");
             var city = json.getString("city");
-            sb.append("Country: ").append(country).append("\n");
-            sb.append("City: ").append(city).append("\n");
-            sb.append("IP: ").append(ip).append("\n");
+            sb.append(String.format(Utils.getApplication().getString(ResId.string.country_s), country)).append("\n")
+            .append(String.format(Utils.getApplication().getString(ResId.string.city_s), city)).append("\n")
+            .append(String.format(Utils.getApplication().getString(ResId.string.ip_s), ip)).append("\n");
         }
         var platform = (String) XposedHelpers.getObjectField(wamCall, "callPeerPlatform");
-        if (platform != null) sb.append("Platform: ").append(platform).append("\n");
+        if (platform != null) sb.append(String.format(Utils.getApplication().getString(ResId.string.platform_s), platform)).append("\n");
         var wppVersion = (String) XposedHelpers.getObjectField(wamCall, "callPeerAppVersion");
-        if (wppVersion != null) sb.append("WhatsApp Version: ").append(wppVersion).append("\n");
-        Utils.showNotification("Call Information", sb.toString());
+        if (wppVersion != null) sb.append(String.format(Utils.getApplication().getString(ResId.string.wpp_version_s), wppVersion)).append("\n");
+        Utils.showNotification(Utils.getApplication().getString(ResId.string.call_information), sb.toString());
     }
 
     private void alwaysOnline() throws Exception {
@@ -249,6 +241,7 @@ public class Others extends Feature {
         var stateChange = Unobfuscator.loadStateChangeMethod(classLoader);
         XposedBridge.hookMethod(stateChange, XC_MethodReplacement.DO_NOTHING);
     }
+
 
     private void doubleTapReaction() throws Exception {
 
@@ -260,22 +253,21 @@ public class Others extends Feature {
         logDebug(Unobfuscator.getMethodDescriptor(bubbleMethod));
 
         XposedBridge.hookMethod(bubbleMethod, new XC_MethodHook() {
-            @SuppressLint("ClickableViewAccessibility")
+
             @Override
             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                 var viewGroup = (View) param.thisObject;
                 if (viewGroup == null) return;
 
-                var gestureDetector = new Object() {
-
-                    public void doubleClick(View view, Object objMessage) {
+                var onMultiClickListener = new OnMultiClickListener(2, 500) {
+                    @Override
+                    public void onMultiClick(View view) {
                         var reactionView = (ViewGroup) view.findViewById(Utils.getID("reactions_bubble_layout", "id"));
                         if (reactionView != null && reactionView.getVisibility() == View.VISIBLE) {
                             for (int i = 0; i < reactionView.getChildCount(); i++) {
                                 if (reactionView.getChildAt(i) instanceof TextView textView) {
                                     if (textView.getText().toString().contains(emoji)) {
-                                        WppCore.sendReaction("", objMessage);
-                                        Utils.showToast(emoji, 1);
+                                        WppCore.sendReaction("", param.args[2]);
                                         return;
                                     }
                                 }
@@ -284,26 +276,7 @@ public class Others extends Feature {
                         WppCore.sendReaction(emoji, param.args[2]);
                     }
                 };
-
-                var auxClick = new Object() {
-                    long lastClick = 0;
-                    long clicks = 0;
-                };
-
-                viewGroup.setOnClickListener(v -> {
-                    if (auxClick.lastClick == 0 || System.currentTimeMillis() - auxClick.lastClick < 1000) {
-                        auxClick.lastClick = System.currentTimeMillis();
-                        auxClick.clicks++;
-                    } else {
-                        auxClick.lastClick = 0;
-                        auxClick.clicks = 0;
-                    }
-                    if (auxClick.clicks > 1) {
-                        auxClick.clicks = 0;
-                        auxClick.lastClick = 0;
-                        gestureDetector.doubleClick(v, param.args[2]);
-                    }
-                });
+                viewGroup.setOnClickListener(onMultiClickListener);
             }
         });
     }

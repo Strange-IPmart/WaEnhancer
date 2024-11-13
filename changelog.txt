@@ -1,8 +1,9 @@
-[CALL INFORMATION]
-* Added the phone number, contact name and WhatsApp version of the originating call.
+[IMPROVEMENTS]
+* Improvement in multi click functions (Archived Chats and doubled Click to reaction)
 
-[SEEN TICK BUTTTONS]
-* Fixed the "Mark as seen" button not appearing for single view audios
+[WHATSAPP]
+* Added pre-support for version 2.24.22.xx (Obrigado novamente ao frknkrc44)
 
 [WAE]
-* Updated Translations
+* Updated translations
+* Added support for Chinese language (Maybe some Chinese outside the country will use it)

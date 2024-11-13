@@ -18,6 +18,7 @@ import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 
 import com.wmods.wppenhacer.BuildConfig;
+import com.wmods.wppenhacer.UpdateChecker;
 import com.wmods.wppenhacer.xposed.core.components.AlertDialogWpp;
 import com.wmods.wppenhacer.xposed.core.components.FMessageWpp;
 import com.wmods.wppenhacer.xposed.core.components.SharedPreferencesWrapper;
@@ -70,7 +71,7 @@ import com.wmods.wppenhacer.xposed.features.privacy.HideChat;
 import com.wmods.wppenhacer.xposed.features.privacy.HideReceipt;
 import com.wmods.wppenhacer.xposed.features.privacy.HideSeen;
 import com.wmods.wppenhacer.xposed.features.privacy.HideTagForward;
-import com.wmods.wppenhacer.xposed.features.privacy.TypePrivacy;
+import com.wmods.wppenhacer.xposed.features.privacy.TypingPrivacy;
 import com.wmods.wppenhacer.xposed.features.privacy.ViewOnce;
 import com.wmods.wppenhacer.xposed.utils.DesignUtils;
 import com.wmods.wppenhacer.xposed.utils.ResId;
@@ -178,6 +179,35 @@ public class FeatureLoader {
         AlertDialogWpp.initDialog(loader);
         FMessageWpp.init(loader);
         Utils.init(loader);
+        WppCore.addListenerActivity((activity, state) -> {
+            // Check for Change Preferences
+            if (state == WppCore.ActivityChangeState.ChangeType.RESUME) {
+                checkUpdate(activity);
+            }
+
+            // Check for Update
+            if (activity.getClass().getSimpleName().equals("HomeActivity") && state == WppCore.ActivityChangeState.ChangeType.START) {
+                CompletableFuture.runAsync(new UpdateChecker(activity));
+            }
+        });
+
+    }
+
+    private static void checkUpdate(@NonNull Activity activity) {
+        if (WppCore.getPrivBoolean("need_restart", false)) {
+            WppCore.setPrivBoolean("need_restart", false);
+            try {
+                new AlertDialogWpp(activity).
+                        setMessage(activity.getString(ResId.string.restart_wpp)).
+                        setPositiveButton(activity.getString(ResId.string.yes), (dialog, which) -> {
+                            if (!Utils.doRestart(activity))
+                                Toast.makeText(activity, "Unable to rebooting activity", Toast.LENGTH_SHORT).show();
+                        })
+                        .setNegativeButton(activity.getString(ResId.string.no), null)
+                        .show();
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     private static void registerReceivers() {
@@ -243,7 +273,7 @@ public class FeatureLoader {
                 ShowOnline.class,
                 DndMode.class,
                 FreezeLastSeen.class,
-                TypePrivacy.class,
+                TypingPrivacy.class,
                 HideChat.class,
                 HideReceipt.class,
                 HideSeen.class,
