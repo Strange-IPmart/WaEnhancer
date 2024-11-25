@@ -324,12 +324,38 @@ public class Unobfuscator {
         });
     }
 
+    public synchronized static Field loadPreIconTabField(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getField(classLoader, () -> {
+            Class<?> cls = loadIconTabMethod(classLoader).getDeclaringClass();
+            Class<?> clsType = findFirstClassUsingStringsFilter(classLoader, "X.", StringMatchType.Contains, "Tried to set badge");
+            if (clsType == null) throw new Exception("PreIconTabField not found");
+            Field result = null;
+            for (var field1 : cls.getFields()) {
+                Object checkResult = Arrays.stream(field1.getType().getFields()).filter(f -> f.getType().equals(clsType)).findFirst().orElse(null);
+                if (checkResult != null) {
+                    result = field1;
+                    break;
+                }
+            }
+            if (result == null) throw new Exception("PreIconTabField not found 2");
+            return result;
+        });
+    }
+
     public synchronized static Field loadIconTabField(ClassLoader classLoader) throws Exception {
         return UnobfuscatorCache.getInstance().getField(classLoader, () -> {
             Class<?> cls = loadIconTabMethod(classLoader).getDeclaringClass();
             Class<?> clsType = findFirstClassUsingStringsFilter(classLoader, "X.", StringMatchType.Contains, "Tried to set badge");
+            if (clsType == null) throw new Exception("IconTabField not found");
             var result = Arrays.stream(cls.getFields()).filter(f -> f.getType().equals(clsType)).findFirst().orElse(null);
-            if (result == null) throw new Exception("IconTabField not found");
+            // for 23.xx, the result is null
+            if (result == null) {
+                for (var field1 : cls.getFields()) {
+                    result = Arrays.stream(field1.getType().getFields()).filter(f -> f.getType().equals(clsType)).findFirst().orElse(null);
+                    if (result != null) break;
+                }
+            }
+            if (result == null) throw new Exception("IconTabField not found 2");
             return result;
         });
     }
@@ -426,28 +452,6 @@ public class Unobfuscator {
         });
     }
 
-    public synchronized static Method loadMediaQualityResolutionMethod(ClassLoader classLoader) throws Exception {
-        return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> {
-            var clazz = loadMediaQualityClass(classLoader);
-            return Arrays.stream(clazz.getDeclaredMethods()).filter(
-                    m -> m.getParameterTypes().length == 3 &&
-                            m.getParameterTypes()[0].equals(int.class) &&
-                            m.getParameterTypes()[1].equals(int.class) &&
-                            m.getParameterTypes()[2].equals(int.class)
-            ).findFirst().orElse(null);
-        });
-    }
-
-    public synchronized static Method loadMediaQualityBitrateMethod(ClassLoader classLoader) throws Exception {
-        return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> {
-            var clazz = loadMediaQualityClass(classLoader);
-            return Arrays.stream(clazz.getDeclaredMethods()).filter(
-                    m -> m.getParameterTypes().length == 1 &&
-                            m.getParameterTypes()[0].equals(int.class) &&
-                            m.getReturnType().equals(int.class)
-            ).findFirst().orElse(null);
-        });
-    }
 
     public synchronized static Method loadMediaQualityVideoMethod2(ClassLoader classLoader) throws Exception {
         return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> {
@@ -472,12 +476,19 @@ public class Unobfuscator {
         return result;
     }
 
-    public synchronized static Class loadMediaQualityVideoLimitClass(ClassLoader classLoader) throws Exception {
-        return UnobfuscatorCache.getInstance().getClass(classLoader, () -> {
-            var clazz = findFirstClassUsingStrings(classLoader, StringMatchType.Contains, "videoLimitMb=");
-            if (clazz == null) throw new Exception("MediaQualityVideoLimit method not found");
-            return clazz;
-        });
+    public synchronized static HashMap<String, Field> loadMediaQualityOriginalVideoFields(ClassLoader classLoader) throws Exception {
+        var method = loadMediaQualityVideoMethod2(classLoader);
+        var methodString = method.getParameterTypes()[0].getDeclaredMethod("toString");
+        var methodData = dexkit.getMethodData(methodString);
+        var usingFields = Objects.requireNonNull(methodData).getUsingFields();
+        var usingStrings = Objects.requireNonNull(methodData).getUsingStrings();
+        var result = new HashMap<String, Field>();
+        for (int i = 0; i < usingStrings.size(); i++) {
+            if (i == usingFields.size()) break;
+            var field = usingFields.get(i).getField().getFieldInstance(classLoader);
+            result.put(usingStrings.get(i), field);
+        }
+        return result;
     }
 
     // TODO: Classes and methods to ShareLimit
@@ -841,11 +852,11 @@ public class Unobfuscator {
             var methodData = dexkit.getMethodData(method);
             var groupJidClass = XposedHelpers.findClass("com.whatsapp.jid.GroupJid", loader);
             var classCheckMethod = dexkit.findMethod(FindMethod.create()
-                    .searchInClass(Collections.singletonList(methodData.getDeclaredClass()))
-                    .matcher(MethodMatcher.create().returnType(groupJidClass)))
+                            .searchInClass(Collections.singletonList(methodData.getDeclaredClass()))
+                            .matcher(MethodMatcher.create().returnType(groupJidClass)))
                     .singleOrNull();
             if (classCheckMethod == null) {
-                var newMethod = methodData.getCallers().firstOrNull();
+                var newMethod = methodData.getCallers().singleOrNull(method1 -> method1.getParamCount() == 4);
                 if (newMethod == null) throw new Exception("SendPresence method not found 2");
                 return newMethod.getMethodInstance(loader);
             }
@@ -1328,13 +1339,6 @@ public class Unobfuscator {
         });
     }
 
-    public synchronized static Class loadMediaQualityProcessor(ClassLoader loader) throws Exception {
-        return UnobfuscatorCache.getInstance().getClass(loader, () -> {
-            var clazz = findFirstClassUsingStrings(loader, StringMatchType.Contains, "{maxKb=");
-            if (clazz == null) throw new RuntimeException("MediaQualityProcessor class not found");
-            return clazz;
-        });
-    }
 
     public synchronized static Method getFilterInitMethod(ClassLoader loader) throws Exception {
         return UnobfuscatorCache.getInstance().getMethod(loader, () -> {
@@ -1493,17 +1497,12 @@ public class Unobfuscator {
 //        });
 //    }
 
-    public synchronized static Constructor loadListUpdateItemsConstructor(ClassLoader classLoader) throws Exception {
-        return UnobfuscatorCache.getInstance().getConstructor(classLoader, () -> {
-            var method = dexkit.findMethod(new FindMethod().matcher(new MethodMatcher().paramCount(1).returnType(void.class).addParamType(Object.class).addUsingNumber(8686)));
-            if (method.isEmpty()) {
-                // for 22.xx, use alternative method
-                method = dexkit.findMethod(new FindMethod().matcher(new MethodMatcher().paramCount(1).returnType(void.class).addUsingString("deleted", StringMatchType.Equals).addUsingString("membership", StringMatchType.Equals)));
-
-                if (method.isEmpty())
-                    throw new RuntimeException("ListUpdateItems method not found");
-            }
-            return method.get(0).getClassInstance(classLoader).getConstructors()[0];
+    public synchronized static Method loadListUpdateItems(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> {
+            var method = dexkit.findMethod(FindMethod.create().matcher(MethodMatcher.create().addUsingString("Running diff util, updates list size", StringMatchType.Contains)));
+            if (method.isEmpty())
+                throw new RuntimeException("ListUpdateItems method not found");
+            return method.get(0).getMethodInstance(classLoader);
         });
     }
 
@@ -1690,6 +1689,10 @@ public class Unobfuscator {
         });
     }
 
+    public static synchronized Class loadTranscriptSegment(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getClass(classLoader, () -> findFirstClassUsingStrings(classLoader, StringMatchType.Contains, "TranscriptionSegment("));
+    }
+
     public static synchronized Method loadStateChangeMethod(ClassLoader classLoader) throws Exception {
         return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> findFirstMethodUsingStrings(classLoader, StringMatchType.Contains, "presencestatemanager/startTransitionToUnavailable/new-state"));
     }
@@ -1712,4 +1715,11 @@ public class Unobfuscator {
         });
     }
 
+    public static Class<?> loadFragmentClass(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getClass(classLoader, () -> {
+            var clazz = findFirstClassUsingStrings(classLoader, StringMatchType.Contains, "mFragmentId=#");
+            if (clazz == null) throw new RuntimeException("Fragment class not found");
+            return clazz;
+        });
+    }
 }

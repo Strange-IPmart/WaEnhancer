@@ -22,6 +22,7 @@ import android.util.Log;
 import android.util.LruCache;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -201,6 +202,27 @@ public class CustomView extends Feature {
         for (var declaration : ruleItem.rule) {
             var property = declaration.getProperty();
             switch (property) {
+                case "parent" -> {
+                    var value = declaration.get(0).toString().trim();
+                    var parent = view.getRootView();
+                    if (!"root".equals(value)) {
+                        parent = parent.findViewById(Utils.getID(value, "id"));
+                    }
+                    if (parent instanceof ViewGroup parentView) {
+                        var oldParent = (View) view.getParent();
+                        if (oldParent.getTag() != "relative") {
+                            ((ViewGroup) view.getParent()).removeView(view);
+                            var frameLayout = new FrameLayout(parentView.getContext());
+                            frameLayout.setTag("relative");
+                            var params = new FrameLayout.LayoutParams(view.getLayoutParams());
+                            parentView.addView(frameLayout, 0, params);
+                            frameLayout.addView(view);
+                            view = frameLayout;
+                        } else if (oldParent.getTag() == "relative") {
+                            view = oldParent;
+                        }
+                    }
+                }
                 case "background-color" -> {
                     if (declaration.size() != 2) continue;
                     var color = (TermColor) declaration.get(0);

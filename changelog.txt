@@ -1,9 +1,16 @@
-[IMPROVEMENTS]
-* Improvement in multi click functions (Archived Chats and doubled Click to reaction)
+[FIXES]
+* Fixed the bug in the wallpaper function that made other screens tremble.
+* Fixed bug in AssemblyAI that didn't work (Test it and let me know if it's working for you).
+
 
 [WHATSAPP]
-* Added pre-support for version 2.24.22.xx (Obrigado novamente ao frknkrc44)
+* Add Initial support for beta 2.24.25.XX
+
+[FEATURES]
+* Added the ability to send videos in real resolution.
+
+[IMPROVEMENTS]
+* Improvements to the HD video and image function (Now the Whatsapp quality selector works for videos and images with resolutions higher than HD)
 
 [WAE]
 * Updated translations
-* Added support for Chinese language (Maybe some Chinese outside the country will use it)

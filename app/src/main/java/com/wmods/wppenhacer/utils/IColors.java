@@ -23,14 +23,27 @@ public class IColors {
         colors.put("#ff25d366", "#ff25d366"); // status indicator
         colors.put("#ffd9fdd3", "#ffd9fdd3"); // nav bar color in light theme
         colors.put("#ff15603e", "#ff15603e");  // nav bar color in light theme
+        colors.put("#fff1f2f4", "#fff1f2f4"); // nav bar color in light theme
+        colors.put("#ff008069", "#ff008069"); // header and buttons in light theme
+
         colors.put("15603e", "15603e");
 //        colors.put("#0b141a", "#ff0b141a");
+
+        // background
+        colors.put("0a1014", "0a1014"); // background green color (above version 22)
+        colors.put("#ff0a1014", "#ff0a1014"); // background green color (above version 22)
+        colors.put("#ff10161a", "#ff10161a"); // background header green color (above version 22)
+        colors.put("#ff12181c", "#ff12181c"); // background header green color (above version 22)
+        colors.put("#ff20272b", "#ff20272b"); // background footer (above version 22)
+        colors.put("#ff3a484f", "#ff3a484f"); // background of Dialogs
 
         colors.put("#ffffffff", "#ffffffff"); // background color in light theme
         colors.put("#ff1b8755", "#ff1b8755"); // background toolbar color in light theme
 
+
         // Secondary
         colors.put("#ff202c33", "#ff202c33");
+        colors.put("#ff2a2f33", "#ff2a2f33");
 
         // New theme color
         colors.put("0b141a", "0b141a");
@@ -46,8 +59,28 @@ public class IColors {
     }
 
     public static String toString(int i) {
-        return "#" + Integer.toHexString(i);
+        var color = Integer.toHexString(i);
+        if (color.length() == 7) {
+            color = "0" + color;
+        }
+        return "#" + color;
     }
 
 
+    public static int getFromIntColor(int color, HashMap<String, String> colors) {
+        var sColor = IColors.toString(color);
+        var newColor = colors.get(sColor);
+        if (newColor != null && newColor.length() == 9) {
+            return IColors.parseColor(newColor);
+        } else {
+            if (!sColor.equals("#0") && !sColor.startsWith("#ff")) {
+                var sColorSub = sColor.substring(0, 3);
+                newColor = colors.get(sColor.substring(3));
+                if (newColor != null) {
+                    return IColors.parseColor(sColorSub + newColor);
+                }
+            }
+        }
+        return color;
+    }
 }

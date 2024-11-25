@@ -32,6 +32,7 @@ import androidx.core.content.ContextCompat;
 import com.wmods.wppenhacer.utils.IColors;
 import com.wmods.wppenhacer.views.WallpaperView;
 import com.wmods.wppenhacer.xposed.core.Feature;
+import com.wmods.wppenhacer.xposed.core.WppCore;
 import com.wmods.wppenhacer.xposed.core.devkit.Unobfuscator;
 import com.wmods.wppenhacer.xposed.utils.DesignUtils;
 import com.wmods.wppenhacer.xposed.utils.ReflectionUtils;
@@ -75,7 +76,7 @@ public class CustomTheme extends Feature {
             return;
 
         var clazz = XposedHelpers.findClass("com.whatsapp.HomeActivity", classLoader);
-        XposedHelpers.findAndHookMethod(clazz.getSuperclass(), "onCreate", Bundle.class, new XC_MethodHook() {
+        XposedHelpers.findAndHookMethod(clazz, "onCreate", Bundle.class, new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                 var activity = (Activity) param.thisObject;
@@ -91,6 +92,7 @@ public class CustomTheme extends Feature {
                 new XC_MethodHook() {
                     @Override
                     protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                        if (!checkHomeActivity()) return;
                         var viewGroup = (ViewGroup) param.getResult();
                         replaceColors(viewGroup, wallAlpha);
                     }
@@ -101,18 +103,16 @@ public class CustomTheme extends Feature {
             @Override
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                 if (!loadTabFrameClass.isInstance(param.thisObject)) return;
+                if (!checkHomeActivity()) return;
                 var viewGroup = (ViewGroup) param.thisObject;
                 var background = viewGroup.getBackground();
                 try {
                     var colorfilters = XposedHelpers.getObjectField(background, "A01");
                     var fields = ReflectionUtils.getFieldsByType(colorfilters.getClass(), ColorStateList.class);
                     var colorStateList = (ColorStateList) fields.get(0).get(colorfilters);
-                    if (colorStateList == null) return;
-                    var color = IColors.toString(colorStateList.getDefaultColor());
-                    var newColor = navAlpha.get(color);
-                    if (newColor != null) {
-                        background.setTint(IColors.parseColor(newColor));
-                    }
+                    var newColor = IColors.getFromIntColor(colorStateList.getDefaultColor(), navAlpha);
+                    if (newColor == colorStateList.getDefaultColor()) return;
+                    background.setTint(newColor);
                 } catch (Throwable ignored) {
                 }
             }
@@ -173,9 +173,8 @@ public class CustomTheme extends Feature {
                         case "00a884", "1da457", "21c063", "d9fdd3" ->
                                 IColors.colors.put(c, primaryColor.substring(3));
                         case "#ff00a884", "#ff1da457", "#ff21c063", "#ff1daa61", "#ff25d366",
-                             "#ffd9fdd3" ->
-                                IColors.colors.put(c, primaryColor);
-                        case "#ff103529" ->
+                             "#ffd9fdd3", "#ff008069" -> IColors.colors.put(c, primaryColor);
+                        case "#ff103529", "#fff1f2f4" ->
                                 IColors.colors.put(c, "#66" + primaryColor.substring(3));
                     }
                 }
@@ -183,15 +182,17 @@ public class CustomTheme extends Feature {
                 if (!backgroundColor.equals("0") && DesignUtils.isValidColor(backgroundColor)) {
                     backgroundColor = backgroundColor.length() == 9 ? backgroundColor : "#ff" + backgroundColor.substring(1);
                     switch (c) {
-                        case "0b141a" -> IColors.colors.put(c, backgroundColor.substring(3));
-                        case "#ff0b141a", "#ff111b21", "#ff000000" ->
+                        case "0b141a", "0a1014" ->
+                                IColors.colors.put(c, backgroundColor.substring(3));
+                        case "#ff0b141a", "#ff111b21", "#ff000000", "#ff0a1014", "#ff10161a",
+                             "#ff12181c", "#ff20272b", "#ff3a484f" ->
                                 IColors.colors.put(c, backgroundColor);
                     }
                 }
 
                 if (!secondaryColor.equals("0") && DesignUtils.isValidColor(secondaryColor)) {
                     secondaryColor = secondaryColor.length() == 9 ? secondaryColor : "#ff" + secondaryColor.substring(1);
-                    if (c.equals("#ff202c33")) {
+                    if (c.equals("#ff202c33") || c.equals("#ff2a2f33")) {
                         IColors.colors.put(c, secondaryColor);
                     }
                 }
@@ -256,7 +257,9 @@ public class CustomTheme extends Feature {
     private void replaceTransparency(HashMap<String, String> wallpaperColors, float mAlpha) {
         var hexAlpha = Integer.toHexString((int) Math.ceil(mAlpha * 255));
         hexAlpha = hexAlpha.length() == 1 ? "0" + hexAlpha : hexAlpha;
-        for (var c : List.of("#ff0b141a", "#ff111b21", "#ff000000", "#ffffffff", "#ff1b8755")) {
+        for (var c : List.of("#ff0b141a", "#ff10161a", "#ff111b21", "#ff000000",
+                "#ffffffff", "#ff1b8755", "#ff0a1014", "#ff12181c", "#ff20272b", "#ff3a484f"
+        )) {
             var oldColor = wallpaperColors.get(c);
             if (oldColor == null) continue;
             var newColor = "#" + hexAlpha + oldColor.substring(3);
@@ -268,7 +271,8 @@ public class CustomTheme extends Feature {
     private void injectWallpaper(View view) {
         var content = (ViewGroup) view;
         var rootView = (ViewGroup) content.getChildAt(0);
-        var header = (ViewGroup) rootView.findViewById(Utils.getID("header", "id"));
+
+        var header = content.findViewById(Utils.getID("header", "id"));
         replaceColors(header, toolbarAlpha);
         var frameLayout = new WallpaperView(rootView.getContext(), prefs, properties);
         rootView.addView(frameLayout, 0);
@@ -293,24 +297,11 @@ public class CustomTheme extends Feature {
     public static class ColorStateListHook extends XC_MethodHook {
         @Override
         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-            var colors = IColors.colors;
             var colorStateList = param.args[0];
             if (colorStateList != null) {
                 var mColors = (int[]) XposedHelpers.getObjectField(colorStateList, "mColors");
                 for (int i = 0; i < mColors.length; i++) {
-                    var sColor = IColors.toString(mColors[i]);
-                    var newColor = colors.get(sColor);
-                    if (newColor != null && newColor.length() == 9) {
-                        mColors[i] = IColors.parseColor(newColor);
-                    } else {
-                        if (!sColor.equals("#0") && !sColor.startsWith("#ff")) {
-                            var sColorSub = sColor.substring(0, 3);
-                            newColor = colors.get(sColor.substring(3));
-                            if (newColor != null) {
-                                mColors[i] = IColors.parseColor(sColorSub + newColor);
-                            }
-                        }
-                    }
+                    mColors[i] = IColors.getFromIntColor(mColors[i], IColors.colors);
                 }
                 XposedHelpers.setObjectField(colorStateList, "mColors", mColors);
                 param.args[0] = colorStateList;
@@ -321,28 +312,30 @@ public class CustomTheme extends Feature {
     public static class IntBgColorHook extends XC_MethodHook {
         @Override
         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-            var colors = IColors.colors;
             var color = (int) param.args[0];
             var sColor = IColors.toString(color);
+
             if (param.thisObject instanceof TextView textView) {
                 var id = Utils.getID("conversations_row_message_count", "id");
                 if (textView.getId() == id) {
                     param.args[0] = IColors.parseColor("#ff" + sColor.substring(sColor.length() == 9 ? 3 : 1));
                     return;
                 }
-            }
-            var newColor = colors.get(sColor);
-            if (newColor != null && newColor.length() == 9) {
-                param.args[0] = IColors.parseColor(newColor);
-            } else {
-                if (!sColor.equals("#0") && !sColor.startsWith("#ff")) {
-                    var sColorSub = sColor.substring(0, 3);
-                    newColor = colors.get(sColor.substring(3));
-                    if (newColor != null) {
-                        param.args[0] = IColors.parseColor(sColorSub + newColor);
-                    }
+            } else if (param.thisObject instanceof Paint) {
+                // This fixes the issue with background colors affecting chat bubbles
+                if (ReflectionUtils.isCalledFromStrings("getValue")) {
+                    return;
                 }
             }
+            param.args[0] = IColors.getFromIntColor(color, IColors.colors);
         }
     }
+
+    private boolean checkHomeActivity() {
+        var homeClass = XposedHelpers.findClass("com.whatsapp.HomeActivity", classLoader);
+        var currentActivity = WppCore.getCurrentActivity();
+        return currentActivity != null && homeClass.isInstance(currentActivity);
+    }
+
+
 }

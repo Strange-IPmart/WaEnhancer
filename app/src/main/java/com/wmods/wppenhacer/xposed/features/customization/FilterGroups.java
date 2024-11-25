@@ -194,12 +194,20 @@ public class FilterGroups extends Feature {
             ReflectionUtils.callMethod(methodInitFilter, null, mConversationFragment);
             if (mFilterInstance == null) return;
             var listField = ReflectionUtils.getFieldByType(mFilterInstance.getClass(), List.class);
-            var list = (List<Object>) ReflectionUtils.getField(listField, mFilterInstance);
+            var list = (List<Object>) ReflectionUtils.getObjectField(listField, mFilterInstance);
             if (list == null) return;
             var name = position == 0 ? "CONTACTS_FILTER" : "GROUP_FILTER";
-            var result = list.stream().filter(item -> Objects.equals(XposedHelpers.getObjectField(item, "A01"), name)).findFirst();
-            if (result.isEmpty()) return;
-            var index = list.indexOf(result.get());
+            Object result = null;
+            for (var item : list) {
+                for (var field : item.getClass().getFields()) {
+                    if (Objects.equals(XposedHelpers.getObjectField(item, field.getName()), name)) {
+                        result = item;
+                        break;
+                    }
+                }
+            }
+            if (result == null) return;
+            var index = list.indexOf(result);
             ReflectionUtils.callMethod(methodSetFilter, mFilterInstance, index);
         } catch (Exception e) {
             logDebug(e);
