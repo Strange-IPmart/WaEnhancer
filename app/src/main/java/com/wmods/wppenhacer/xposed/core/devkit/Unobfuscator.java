@@ -3,6 +3,7 @@ package com.wmods.wppenhacer.xposed.core.devkit;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.util.Log;
@@ -220,6 +221,39 @@ public class Unobfuscator {
                 }
             }
             throw new Exception("ForwardTag method not found");
+        });
+    }
+
+    public synchronized static Field loadBroadcastTagField(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getField(classLoader, () -> {
+            var fmessage = loadFMessageClass(classLoader);
+            var clazzData = dexkit.findClass(FindClass.create().matcher(ClassMatcher.create().addUsingString("UPDATE_MESSAGE_MAIN_BROADCAST_SCAN_SQL")));
+            if (clazzData.isEmpty()) return new Exception("BroadcastTag class not found");
+            var methodData = dexkit.findMethod(FindMethod.create().searchInClass(clazzData).matcher(MethodMatcher.create().usingStrings("participant_hash", "view_mode", "broadcast")));
+            if (methodData.isEmpty()) throw new Exception("BroadcastTag method support not found");
+            var usingFields = methodData.get(0).getUsingFields();
+            for (var ufield : usingFields) {
+                var field = ufield.getField();
+                if (field.getDeclaredClass().getName().equals(fmessage.getName()) &&
+                        field.getType().getName().equals(boolean.class.getName())
+                ) {
+                    return field.getFieldInstance(classLoader);
+                }
+            }
+            throw new Exception("BroadcastTag field not found");
+        });
+    }
+
+    public synchronized static Method loadBroadcastTagMethod(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> {
+            var field = loadBroadcastTagField(classLoader);
+            var clazzData = dexkit.findClass(FindClass.create().matcher(ClassMatcher.create().addUsingString("ConversationRow/setUpUserNameInGroupView")));
+            if (clazzData.isEmpty())
+                throw new Exception("BroadcastTag: ConversationRow Class not found");
+            var method = dexkit.findMethod(FindMethod.create().searchInClass(clazzData).matcher(MethodMatcher.create().addUsingField(DexSignUtil.getFieldDescriptor(field))));
+            if (method.isEmpty())
+                throw new Exception("BroadcastTag: ConversationRow Method not found");
+            return method.get(0).getMethodInstance(classLoader);
         });
     }
 
@@ -779,7 +813,7 @@ public class Unobfuscator {
 
     public synchronized static Method loadAntiRevokeOnCallReceivedMethod(ClassLoader loader) throws Exception {
         return UnobfuscatorCache.getInstance().getMethod(loader, () -> {
-            var method = findFirstMethodUsingStrings(loader, StringMatchType.Contains, "VoiceService:callStateChangedOnUiThread");
+            var method = findFirstMethodUsingStrings(loader, StringMatchType.Contains, "voip/callStateChangedOnUIThread");
             if (method == null) throw new Exception("OnCallReceiver method not found");
             return method;
         });
@@ -1656,11 +1690,23 @@ public class Unobfuscator {
         });
     }
 
-    public synchronized static Method loadDateWrapper(ClassLoader classLoader) throws Exception {
+    public synchronized static Method loadBallonDateDrawable(ClassLoader classLoader) throws Exception {
         return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> {
-            var methodData = dexkit.findMethod(FindMethod.create().matcher(MethodMatcher.create().name("getDateWrapperBackground")));
+            var methodData = dexkit.findMethod(FindMethod.create().matcher(MethodMatcher.create().addUsingString("Unreachable code: direction=").returnType(Rect.class)));
             if (methodData.isEmpty()) throw new Exception("LoadDateWrapper method not found");
-            return methodData.get(0).getMethodInstance(classLoader);
+            var clazz = methodData.get(0).getMethodInstance(classLoader).getDeclaringClass();
+            var method = ReflectionUtils.findMethodUsingFilterIfExists(clazz, m -> List.of(1, 2).contains(m.getParameterCount()) && m.getParameterTypes()[0].equals(int.class) && m.getReturnType().equals(Drawable.class));
+            if (method == null) throw new RuntimeException("DateWrapper method not found");
+            return method;
+        });
+    }
+
+    public synchronized static Method loadBallonBorderDrawable(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> {
+            var clazz = loadBallonDateDrawable(classLoader).getDeclaringClass();
+            var method = ReflectionUtils.findMethodUsingFilterIfExists(clazz, m -> m.getParameterCount() == 3 && m.getReturnType().equals(Drawable.class));
+            if (method == null) throw new RuntimeException("Ballon Border method not found");
+            return method;
         });
     }
 
@@ -1752,6 +1798,22 @@ public class Unobfuscator {
             if (methodData.isEmpty())
                 throw new RuntimeException("MediaQualitySelection method not found");
             return methodData.get(0).getMethodInstance(classLoader);
+        });
+    }
+
+    public static Field loadFmessageTimestampField(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getField(classLoader, () -> {
+            var fmessageClass = loadFMessageClass(classLoader);
+            var chatLimitDelete2Method = Unobfuscator.loadChatLimitDelete2Method(classLoader);
+            var usingFields = dexkit.getMethodData(chatLimitDelete2Method).getUsingFields();
+            for (var uField : usingFields) {
+                var field = uField.getField();
+                if (field.getDeclaredClass().getName().equals(fmessageClass.getName())
+                        && field.getType().getName().equals(long.class.getName())) {
+                    return field.getFieldInstance(classLoader);
+                }
+            }
+            throw new RuntimeException("FMessage Timestamp method not found");
         });
     }
 }
