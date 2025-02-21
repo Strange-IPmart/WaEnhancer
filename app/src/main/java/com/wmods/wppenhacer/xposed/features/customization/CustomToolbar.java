@@ -48,7 +48,37 @@ public class CustomToolbar extends Feature {
         XposedHelpers.findAndHookMethod("com.whatsapp.HomeActivity", classLoader, "onCreate", Bundle.class, methodHook);
         Others.propsBoolean.put(6481, false);
         Others.propsBoolean.put(5353, true);
+        Others.propsBoolean.put(8735, false);
         expirationAboutInfo();
+        if (showName || showBio) {
+            disableNewLogo();
+        }
+    }
+
+    private void disableNewLogo() throws Exception {
+        var changeLogoMethod = Unobfuscator.loadChangeTitleLogoMethod(classLoader);
+        var changeLogoField = Unobfuscator.loadChangeTitleLogoField(classLoader);
+
+        XposedBridge.hookMethod(changeLogoMethod, new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                var idx = ReflectionUtils.findIndexOfType(param.args, Activity.class);
+                var homeActivity = (Activity) param.args[idx];
+                changeLogoField.setAccessible(true);
+                changeLogoField.set(homeActivity, Integer.valueOf(2));
+            }
+
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                var idx = ReflectionUtils.findIndexOfType(param.args, Activity.class);
+                var homeActivity = (Activity) param.args[idx];
+                var toolbar = (ViewGroup) homeActivity.findViewById(Utils.getID("toolbar", "id"));
+                var logo = toolbar.findViewById(Utils.getID("toolbar_logo_text", "id"));
+                if (logo != null) {
+                    logo.setVisibility(View.GONE);
+                }
+            }
+        });
     }
 
 
@@ -100,6 +130,7 @@ public class CustomToolbar extends Feature {
             this.typeArchive = typeArchive;
         }
 
+
         @Override
         protected void afterHookedMethod(MethodHookParam param) throws Throwable {
             var homeActivity = (Activity) param.thisObject;
@@ -108,6 +139,7 @@ public class CustomToolbar extends Feature {
             var logo = toolbar.findViewById(Utils.getID("toolbar_logo", "id"));
             var name = WppCore.getMyName();
             var bio = WppCore.getMyBio();
+            var nameWa = homeActivity.getPackageManager().getApplicationLabel(homeActivity.getApplicationInfo()).toString();
 
 
             if (typeArchive.equals("1")) {
@@ -134,9 +166,7 @@ public class CustomToolbar extends Feature {
 
             var methods = Arrays.stream(actionbar.getClass().getDeclaredMethods()).filter(m -> m.getParameterCount() == 1 && m.getParameterTypes()[0] == CharSequence.class).toArray(Method[]::new);
 
-            if (showName) {
-                methods[1].invoke(actionbar, name);
-            }
+            methods[1].invoke(actionbar, showName ? name : nameWa);
 
             if (showBio) {
                 methods[0].invoke(actionbar, bio);
@@ -147,13 +177,13 @@ public class CustomToolbar extends Feature {
                 protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                     var name = WppCore.getMyName();
                     var bio = WppCore.getMyBio();
-                    if (showBio && (param.args[0] == "" || param.args[0] == "WhatsApp")) {
+                    if (showBio && (param.args[0] == "" || param.args[0] == nameWa)) {
                         ReflectionUtils.callMethod(methods[0], param.thisObject, bio);
                     } else {
                         ReflectionUtils.callMethod(methods[0], param.thisObject, "");
                     }
-                    if (showName && (param.args[0] == "" || param.args[0] == "WhatsApp")) {
-                        param.args[0] = name;
+                    if (param.args[0] == "" || param.args[0] == nameWa) {
+                        param.args[0] = showName ? name : nameWa;
                     }
 
                     var layoutParams = logo.getLayoutParams();

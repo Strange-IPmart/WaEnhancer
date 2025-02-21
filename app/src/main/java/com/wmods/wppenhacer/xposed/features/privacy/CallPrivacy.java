@@ -17,6 +17,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import de.robv.android.xposed.XC_MethodHook;
@@ -108,8 +109,12 @@ public class CallPrivacy extends Feature {
         super(loader, preferences);
     }
 
-    public boolean checkCallBlock(Object userJid, PrivacyType type) throws IllegalAccessException, InvocationTargetException {
-        var phoneNumber = WppCore.stripJID(WppCore.getRawString(userJid));
+    public boolean checkCallBlock(Object jid, PrivacyType type) throws IllegalAccessException, InvocationTargetException {
+        var rawPhoneNumber = WppCore.getRawString(jid);
+        rawPhoneNumber = rawPhoneNumber.replaceFirst("\\.[\\d:]+@", "@");
+        var userJid = WppCore.createUserJid(rawPhoneNumber);
+
+        var phoneNumber = WppCore.stripJID(rawPhoneNumber);
 
         if (phoneNumber == null) return false;
 
@@ -126,15 +131,14 @@ public class CallPrivacy extends Feature {
         switch (type) {
             case ONLY_UNKNOWN:
                 if (customprivacy.optBoolean("BlockCall", false)) return true;
-                phoneNumber += "@s.whatsapp.net";
-                var contactName = WppCore.getSContactName(WppCore.createUserJid(phoneNumber), true);
+                var contactName = WppCore.getSContactName(userJid, true);
                 return TextUtils.isEmpty(contactName) || contactName.equals(phoneNumber);
             case BACKLIST:
                 if (customprivacy.optBoolean("BlockCall", false)) return true;
                 var callBlockList = prefs.getString("call_block_contacts", "[]");
                 var blockList = Arrays.stream(callBlockList.substring(1, callBlockList.length() - 1).split(", ")).map(String::trim).collect(Collectors.toCollection(ArrayList::new));
                 for (var blockNumber : blockList) {
-                    if (!TextUtils.isEmpty(blockNumber) && phoneNumber.contains(blockNumber)) {
+                    if (!TextUtils.isEmpty(blockNumber) && Objects.equals(rawPhoneNumber, blockNumber)) {
                         return true;
                     }
                 }
@@ -143,7 +147,7 @@ public class CallPrivacy extends Feature {
                 var callWhiteList = prefs.getString("call_white_contacts", "[]");
                 var whiteList = Arrays.stream(callWhiteList.substring(1, callWhiteList.length() - 1).split(", ")).map(String::trim).collect(Collectors.toCollection(ArrayList::new));
                 for (var whiteNumber : whiteList) {
-                    if (!TextUtils.isEmpty(whiteNumber) && phoneNumber.contains(whiteNumber)) {
+                    if (!TextUtils.isEmpty(whiteNumber) && Objects.equals(rawPhoneNumber, whiteNumber)) {
                         return false;
                     }
                 }

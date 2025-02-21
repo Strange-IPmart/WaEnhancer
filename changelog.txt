@@ -1,9 +1,14 @@
 [BUGS FIXED]
-* Fixed bug in receiving messages in Tasker (within the chat)
-* Fixed bug between hiding receiving and reading messages
-* Fixed bug in the main bar where the name and biography do not appear
-* Fixed bug when blocking calls on the blacklist
-* Fixed bug where icons don't appear to view status in the latest versions of whatsapp
+* Fixed bug in deleted status visualization @frknkrc44
+* Fixed bug in pinned chats limit
 
-[WHATSAPP]
-* Added support for version 2.25.2.XX
+[BUGS FIXED IN WA BETA 2.25.4.XX]
+* Fixed bug when getting contact numbers from chats
+* Fixed bug when changing text color in Text Status
+* Fixed bug in IGStatus where contact data wasn't showing
+
+[IMPROVEMENTS]
+* Disabled new media picker design (This was preventing you from selecting photos using the gallery)
+
+[WA Enhancer]
+* Updated translations

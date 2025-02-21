@@ -144,7 +144,12 @@ public class SeenTick extends Feature {
             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                 var position = (int) param.args[1];
                 var list = (List<?>) XposedHelpers.getObjectField(param.args[0], fieldList.getName());
-                var fMessage = new FMessageWpp(list.get(position));
+                var object = list.get(position);
+                if (!FMessageWpp.TYPE.isInstance(object)) {
+                    var fmessageField = ReflectionUtils.findFieldUsingFilter(object.getClass(), field -> FMessageWpp.TYPE.isAssignableFrom(field.getType()));
+                    object = fmessageField.get(object);
+                }
+                var fMessage = new FMessageWpp(object);
                 var messageKey = fMessage.getKey().messageID;
                 var jid = WppCore.getRawString(fMessage.getUserJid());
                 messages.clear();
@@ -168,25 +173,19 @@ public class SeenTick extends Feature {
     private void hookStatusScreen(int ticktype) throws Exception {
         var viewButtonMethod = Unobfuscator.loadBlueOnReplayViewButtonMethod(classLoader);
         logDebug(Unobfuscator.getMethodDescriptor(viewButtonMethod));
-        var viewStatusClass = Unobfuscator.loadBlueOnReplayViewButtonOutSideClass(classLoader);
+        var viewStatusField = Unobfuscator.loadBlueOnReplayViewButtonOutSideField(classLoader);
         if (ticktype == 1) {
             XposedBridge.hookMethod(viewButtonMethod, new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                     if (!prefs.getBoolean("hidestatusview", false)) return;
-                    var fMessageField = ReflectionUtils.getFieldByExtendType(viewStatusClass, FMessageWpp.TYPE);
+                    var fMessageField = ReflectionUtils.getFieldByExtendType(viewStatusField.getDeclaringClass(), FMessageWpp.TYPE);
                     var fMessageObj = ReflectionUtils.getObjectField(fMessageField, param.thisObject);
                     if (fMessageObj == null) {
-                        var fields = viewStatusClass.getDeclaredFields();
-                        for (Field field : fields) {
-                            if (field.getType().isPrimitive()) continue;
-                            var instance = ReflectionUtils.getObjectField(field, param.thisObject);
-                            if (instance == null) continue;
-                            fMessageField = ReflectionUtils.getFieldByExtendType(field.getType(), FMessageWpp.TYPE);
-                            if (fMessageField != null) {
-                                fMessageObj = ReflectionUtils.getObjectField(fMessageField, instance);
-                                break;
-                            }
+                        var instance = ReflectionUtils.getObjectField(viewStatusField, param.thisObject);
+                        fMessageField = ReflectionUtils.findFieldUsingFilterIfExists(instance.getClass(), field1 -> FMessageWpp.TYPE.isAssignableFrom(field1.getType()));
+                        if (fMessageField != null) {
+                            fMessageObj = ReflectionUtils.getObjectField(fMessageField, instance);
                         }
                     }
                     if (fMessageObj == null) {
@@ -278,7 +277,12 @@ public class SeenTick extends Feature {
                             var listStatusField = ReflectionUtils.getFieldByExtendType(fragmentInstance.getClass(), List.class);
                             var listStatus = (List) listStatusField.get(fragmentInstance);
                             for (int i = 0; i < listStatus.size(); i++) {
-                                var fMessage = new FMessageWpp(listStatus.get(i));
+                                var obj = listStatus.get(i);
+                                if (!FMessageWpp.TYPE.isInstance(obj)) {
+                                    var fieldFMessage = ReflectionUtils.getFieldByExtendType(obj.getClass(), FMessageWpp.TYPE);
+                                    obj = fieldFMessage.get(obj);
+                                }
+                                var fMessage = new FMessageWpp(obj);
                                 var messageId = fMessage.getKey().messageID;
                                 if (!fMessage.getKey().isFromMe) {
                                     messages.add(new MessageInfo(fMessage, messageId, null));
@@ -440,15 +444,20 @@ public class SeenTick extends Feature {
         CompletableFuture.runAsync(() -> {
             try {
                 var fMessage = new FMessageWpp(messageObject);
-                logDebug("sendBlueTickMedia: " + WppCore.getRawString(fMessage.getKey().remoteJid));
+                var userJid = fMessage.getKey().remoteJid;
+                var rawJid = WppCore.getRawString(userJid);
+                Object participant = null;
+                if (WppCore.isGroup(rawJid)) {
+                    participant = fMessage.getUserJid();
+                }
+                logDebug("sendBlueTickMedia: " + WppCore.getRawString(userJid));
                 var sendPlayerClass = XposedHelpers.findClass("com.whatsapp.jobqueue.job.SendPlayedReceiptJobV2", classLoader);
                 var constructor = sendPlayerClass.getDeclaredConstructors()[0];
                 var classParticipantInfo = constructor.getParameterTypes()[0];
                 var rowsId = new Long[]{fMessage.getRowId()};
-                var remoteJid = fMessage.getKey().remoteJid;
                 var messageId = fMessage.getKey().messageID;
                 constructor = classParticipantInfo.getDeclaredConstructors()[0];
-                var participantInfo = constructor.newInstance(remoteJid, null, rowsId, new String[]{messageId});
+                var participantInfo = constructor.newInstance(userJid, participant, rowsId, new String[]{messageId});
                 var sendJob = XposedHelpers.newInstance(sendPlayerClass, participantInfo, false);
                 WaJobManagerMethod.invoke(mWaJobManager, sendJob);
                 if (clear) messages.clear();
@@ -461,7 +470,7 @@ public class SeenTick extends Feature {
     @NonNull
     @Override
     public String getPluginName() {
-        return "Blue Tick";
+        return "Seen Tick";
     }
 
 

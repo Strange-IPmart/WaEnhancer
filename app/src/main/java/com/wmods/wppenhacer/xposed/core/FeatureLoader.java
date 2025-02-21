@@ -53,6 +53,7 @@ import com.wmods.wppenhacer.xposed.features.media.DownloadViewOnce;
 import com.wmods.wppenhacer.xposed.features.media.MediaPreview;
 import com.wmods.wppenhacer.xposed.features.media.MediaQuality;
 import com.wmods.wppenhacer.xposed.features.media.StatusDownload;
+import com.wmods.wppenhacer.xposed.features.others.ActivityController;
 import com.wmods.wppenhacer.xposed.features.others.AudioTranscript;
 import com.wmods.wppenhacer.xposed.features.others.Channels;
 import com.wmods.wppenhacer.xposed.features.others.ChatFilters;
@@ -179,7 +180,7 @@ public class FeatureLoader {
 
     private static void initComponents(ClassLoader loader, XSharedPreferences pref) throws Exception {
         AlertDialogWpp.initDialog(loader);
-        FMessageWpp.init(loader);
+        FMessageWpp.initialize(loader);
         Utils.init(loader);
         WppCore.addListenerActivity((activity, state) -> {
             // Check for Change Preferences
@@ -209,7 +210,7 @@ public class FeatureLoader {
                         })
                         .setNegativeButton(activity.getString(ResId.string.no), null)
                         .show();
-            } catch (Exception ignored) {
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -271,6 +272,7 @@ public class FeatureLoader {
                 SeenTick.class,
                 BubbleColors.class,
                 CallPrivacy.class,
+                ActivityController.class,
                 CustomTheme.class,
 //                CustomThemeV2.class,
                 ChatLimit.class,

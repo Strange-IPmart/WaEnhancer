@@ -10,7 +10,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -51,7 +50,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.stream.Collectors;
 
-import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 
 public class Unobfuscator {
@@ -228,7 +226,7 @@ public class Unobfuscator {
         return UnobfuscatorCache.getInstance().getField(classLoader, () -> {
             var fmessage = loadFMessageClass(classLoader);
             var clazzData = dexkit.findClass(FindClass.create().matcher(ClassMatcher.create().addUsingString("UPDATE_MESSAGE_MAIN_BROADCAST_SCAN_SQL")));
-            if (clazzData.isEmpty()) return new Exception("BroadcastTag class not found");
+            if (clazzData.isEmpty()) throw new Exception("BroadcastTag class not found");
             var methodData = dexkit.findMethod(FindMethod.create().searchInClass(clazzData).matcher(MethodMatcher.create().usingStrings("participant_hash", "view_mode", "broadcast")));
             if (methodData.isEmpty()) throw new Exception("BroadcastTag method support not found");
             var usingFields = methodData.get(0).getUsingFields();
@@ -304,11 +302,10 @@ public class Unobfuscator {
 
     public synchronized static Method loadTabListMethod(ClassLoader classLoader) throws Exception {
         return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> {
-//            Class<?> classMain = findFirstClassUsingStrings(classLoader, StringMatchType.Equals, "mainContainer");
             var classData = dexkit.findClass(FindClass.create().searchPackages("X.").matcher(ClassMatcher.create().addUsingString("mainContainer")));
             if (classData.isEmpty()) throw new Exception("mainContainer class not found");
             var classMain = classData.get(0).getInstance(classLoader);
-            Method method = Arrays.stream(classMain.getMethods()).filter(m -> m.getName().equals("onCreate")).findFirst().orElse(null);
+            Method method = Arrays.stream(classMain.getDeclaredMethods()).parallel().filter(m -> m.getName().equals("onCreate")).findFirst().orElse(null);
             if (method == null) throw new Exception("onCreate method not found");
             return method;
         });
@@ -325,7 +322,7 @@ public class Unobfuscator {
     public synchronized static Method loadTabFragmentMethod(ClassLoader classLoader) throws Exception {
         return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> {
             Class<?> clsFrag = XposedHelpers.findClass("com.whatsapp.conversationslist.ConversationsFragment", classLoader);
-            Method result = Arrays.stream(clsFrag.getDeclaredMethods()).filter(m -> m.getParameterTypes().length == 0 && m.getReturnType().equals(List.class)).findFirst().orElse(null);
+            Method result = Arrays.stream(clsFrag.getDeclaredMethods()).parallel().filter(m -> m.getParameterTypes().length == 0 && m.getReturnType().equals(List.class)).findFirst().orElse(null);
             if (result == null) throw new Exception("TabFragment method not found");
             return result;
         });
@@ -343,9 +340,8 @@ public class Unobfuscator {
 
     public synchronized static Method loadFabMethod(ClassLoader classLoader) throws Exception {
         return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> {
-            Class<?> cls = XposedHelpers.findClass("com.whatsapp.conversationslist.ConversationsFragment", classLoader);
-            List<ClassData> classes = List.of(dexkit.getClassData(cls));
-            var result = dexkit.findMethod(new FindMethod().searchInClass(classes).matcher(new MethodMatcher().paramCount(0).usingNumbers(200).returnType(int.class)));
+            ClassData classData = dexkit.getClassData("com.whatsapp.conversationslist.ConversationsFragment");
+            var result = classData.findMethod(FindMethod.create().matcher(MethodMatcher.create().paramCount(0).usingNumbers(200).returnType(int.class)));
             if (result.isEmpty()) throw new Exception("Fab method not found");
             return result.get(0).getMethodInstance(classLoader);
         });
@@ -382,16 +378,11 @@ public class Unobfuscator {
             Class<?> cls = loadIconTabMethod(classLoader).getDeclaringClass();
             Class<?> clsType = findFirstClassUsingStringsFilter(classLoader, "X.", StringMatchType.Contains, "Tried to set badge");
             if (clsType == null) throw new Exception("IconTabField not found");
-            var result = Arrays.stream(cls.getFields()).filter(f -> f.getType().equals(clsType)).findFirst().orElse(null);
-            // for 23.xx, the result is null
-            if (result == null) {
-                for (var field1 : cls.getFields()) {
-                    result = Arrays.stream(field1.getType().getFields()).filter(f -> f.getType().equals(clsType)).findFirst().orElse(null);
-                    if (result != null) break;
-                }
+            for (var field1 : cls.getFields()) {
+                var result = Arrays.stream(field1.getType().getFields()).filter(f -> f.getType().equals(clsType)).findFirst().orElse(null);
+                if (result != null) return result;
             }
-            if (result == null) throw new Exception("IconTabField not found 2");
-            return result;
+            throw new Exception("IconTabField not found 2");
         });
     }
 
@@ -433,7 +424,7 @@ public class Unobfuscator {
     public synchronized static Constructor loadEnableCountTabConstructor1(ClassLoader classLoader) throws Exception {
         var countMethod = loadEnableCountTabMethod(classLoader);
         var indiceClass = countMethod.getParameterTypes()[1];
-        var result = dexkit.findClass(new FindClass().matcher(new ClassMatcher().superClass(indiceClass.getName()).addMethod(new MethodMatcher().paramCount(1))));
+        var result = dexkit.findClass(FindClass.create().matcher(ClassMatcher.create().superClass(indiceClass.getName()).addMethod(MethodMatcher.create().paramCount(1))));
         if (result.isEmpty()) throw new Exception("EnableCountTab method not found");
         return result.get(0).getInstance(classLoader).getConstructors()[0];
     }
@@ -441,7 +432,7 @@ public class Unobfuscator {
     public synchronized static Constructor loadEnableCountTabConstructor2(ClassLoader classLoader) throws Exception {
         var countTabConstructor1 = loadEnableCountTabConstructor1(classLoader);
         var indiceClass = countTabConstructor1.getParameterTypes()[0];
-        var result = dexkit.findClass(new FindClass().matcher(new ClassMatcher().superClass(indiceClass.getName()).addMethod(new MethodMatcher().paramCount(1).addParamType(int.class))));
+        var result = dexkit.findClass(FindClass.create().matcher(ClassMatcher.create().superClass(indiceClass.getName()).addMethod(MethodMatcher.create().paramCount(1).addParamType(int.class))));
         if (result.isEmpty()) throw new Exception("EnableCountTab method not found");
         return result.get(0).getInstance(classLoader).getConstructors()[0];
     }
@@ -449,7 +440,7 @@ public class Unobfuscator {
     public synchronized static Constructor loadEnableCountTabConstructor3(ClassLoader classLoader) throws Exception {
         var countTabConstructor1 = loadEnableCountTabConstructor1(classLoader);
         var indiceClass = countTabConstructor1.getParameterTypes()[0];
-        var result = dexkit.findClass(new FindClass().matcher(new ClassMatcher().superClass(indiceClass.getName()).addMethod(new MethodMatcher().paramCount(0))));
+        var result = dexkit.findClass(FindClass.create().matcher(ClassMatcher.create().superClass(indiceClass.getName()).addMethod(MethodMatcher.create().paramCount(0))));
         if (result.isEmpty()) throw new Exception("EnableCountTab method not found");
         return result.get(0).getInstance(classLoader).getConstructors()[0];
     }
@@ -699,7 +690,7 @@ public class Unobfuscator {
 
     public synchronized static Field loadAntiRevokeConvChatField(ClassLoader loader) throws Exception {
         return UnobfuscatorCache.getInstance().getField(loader, () -> {
-            Class<?> chatClass = findFirstClassUsingStrings(loader, StringMatchType.Contains, "payment_chat_composer_entry_nux_shown");
+            Class<?> chatClass = findFirstClassUsingStrings(loader, StringMatchType.Contains, "conversation/createconversation");
             Class<?> conversation = XposedHelpers.findClass("com.whatsapp.Conversation", loader);
             Field field = ReflectionUtils.getFieldByType(conversation, chatClass);
             if (field == null) throw new Exception("AntiRevokeConvChat field not found");
@@ -709,7 +700,7 @@ public class Unobfuscator {
 
     public synchronized static Field loadAntiRevokeChatJidField(ClassLoader loader) throws Exception {
         return UnobfuscatorCache.getInstance().getField(loader, () -> {
-            Class<?> chatClass = findFirstClassUsingStrings(loader, StringMatchType.Contains, "payment_chat_composer_entry_nux_shown");
+            Class<?> chatClass = findFirstClassUsingStrings(loader, StringMatchType.Contains, "conversation/createconversation");
             Class<?> jidClass = XposedHelpers.findClass("com.whatsapp.jid.Jid", loader);
             Field field = ReflectionUtils.getFieldByExtendType(chatClass, jidClass);
             if (field == null) throw new Exception("AntiRevokeChatJid field not found");
@@ -753,14 +744,15 @@ public class Unobfuscator {
     public synchronized static Method loadUnknownStatusPlaybackMethod(ClassLoader loader) throws Exception {
         return UnobfuscatorCache.getInstance().getMethod(loader, () -> {
             var statusPlaybackClass = XposedHelpers.findClass("com.whatsapp.status.playback.fragment.StatusPlaybackContactFragment", loader);
-            var classData = List.of(dexkit.getClassData(statusPlaybackClass));
-            var result = dexkit.findMethod(new FindMethod().
-                    searchInClass(classData).
-                    matcher(new MethodMatcher()
-                            .addUsingString("xFamilyGating").
-                            addUsingString("xFamilyCrosspostManager")));
-            if (result.isEmpty()) throw new Exception("UnknownStatusPlayback method not found");
-            return result.get(0).getMethodInstance(loader);
+            var refreshCurrentPage = dexkit.findMethod(FindMethod.create().matcher(MethodMatcher.create().addUsingString("playbackFragment/refreshCurrentPageSubTitle message is empty"))).get(0);
+            var invokes = refreshCurrentPage.getInvokes();
+            for (var invoke : invokes) {
+                var method = invoke.getMethodInstance(loader);
+                if (Modifier.isStatic(method.getModifiers()) && method.getParameterCount() > 1 && List.of(method.getParameterTypes()).contains(statusPlaybackClass) && method.getDeclaringClass() == statusPlaybackClass) {
+                    return method;
+                }
+            }
+            throw new Exception("UnknownStatusPlayback method not found");
         });
     }
 
@@ -769,6 +761,11 @@ public class Unobfuscator {
             Class<?> class1 = XposedHelpers.findClass("com.whatsapp.status.playback.widget.StatusPlaybackProgressView", loader);
             ClassDataList classView = dexkit.findClass(FindClass.create().matcher(
                     ClassMatcher.create().methodCount(1).addFieldForType(class1)
+            ));
+            if (classView.isEmpty()) classView = dexkit.findClass(FindClass.create().matcher(
+                    ClassMatcher.create().methodCount(1, 2)
+                            .addMethod(MethodMatcher.create().paramTypes(View.class, boolean.class, boolean.class))
+                            .addFieldForType(class1)
             ));
             if (classView.isEmpty()) throw new Exception("StatusPlaybackView field not found");
             Class<?> clsViewStatus = classView.get(0).getInstance(loader);
@@ -899,23 +896,10 @@ public class Unobfuscator {
         });
     }
 
-    public synchronized static Method loadPinnedLimitMethod(ClassLoader loader) throws Exception {
-        return UnobfuscatorCache.getInstance().getMethod(loader, () -> {
-            var methodList = dexkit.findMethod(FindMethod.create().matcher(MethodMatcher.create().addUsingString("count_progress").paramCount(1, 2)));
-            if (methodList.isEmpty()) throw new Exception("PinnedLimit method not found");
-            var menuItemName = MenuItem.class.getName();
-            var method = methodList.parallelStream().filter(m -> m.getParamTypes().get(0).getName().equals(menuItemName)).findFirst().orElse(null);
-            if (method == null) throw new Exception("PinnedLimit method not found");
-            return method.getMethodInstance(loader);
-        });
-    }
-
 
     public synchronized static Method loadPinnedHashSetMethod(ClassLoader loader) throws Exception {
         return UnobfuscatorCache.getInstance().getMethod(loader, () -> {
-            var clazz = findFirstClassUsingStrings(loader, StringMatchType.Contains, "getPinnedJids/QUERY_CHAT_SETTINGS");
-            if (clazz == null) throw new Exception("PinnedList class not found");
-            var method = Arrays.stream(clazz.getDeclaredMethods()).filter(m -> m.getReturnType().equals(Set.class)).findFirst().orElse(null);
+            var method = findFirstMethodUsingStrings(loader, StringMatchType.Contains, "getPinnedJids/QUERY_CHAT_SETTINGS");
             if (method == null) throw new Exception("PinnedHashSet method not found");
             return method;
         });
@@ -925,7 +909,7 @@ public class Unobfuscator {
         return UnobfuscatorCache.getInstance().getMethod(loader, () -> {
             var clazzFilters = findFirstClassUsingStrings(loader, StringMatchType.Contains, "conversations/filter/performFiltering");
             if (clazzFilters == null) throw new RuntimeException("Filters class not found");
-            return Arrays.stream(clazzFilters.getDeclaredMethods()).filter(m -> m.getName().equals("publishResults")).findFirst().orElse(null);
+            return Arrays.stream(clazzFilters.getDeclaredMethods()).parallel().filter(m -> m.getName().equals("publishResults")).findFirst().orElse(null);
         });
     }
 
@@ -958,13 +942,18 @@ public class Unobfuscator {
         });
     }
 
-    public synchronized static Class<?> loadBlueOnReplayViewButtonOutSideClass(ClassLoader loader) throws Exception {
-        return UnobfuscatorCache.getInstance().getClass(loader, () -> {
-            var clazz = loadBlueOnReplayViewButtonMethod(loader).getDeclaringClass().getName();
-            var outClasses = dexkit.findClass(FindClass.create().matcher(ClassMatcher.create().superClass(clazz)));
-            if (outClasses.isEmpty())
-                throw new RuntimeException("BlueOnReplayViewButtonOutSideMethod method not found");
-            return outClasses.get(0).getInstance(loader);
+    public synchronized static Field loadBlueOnReplayViewButtonOutSideField(ClassLoader loader) throws Exception {
+        return UnobfuscatorCache.getInstance().getField(loader, () -> {
+            var method = loadBlueOnReplayViewButtonMethod(loader);
+            var clazz = method.getDeclaringClass();
+            var methodData = dexkit.getMethodData(method);
+            var fields = methodData.getUsingFields();
+            for (var ufield : fields) {
+                var field = ufield.getField().getFieldInstance(loader);
+                if (clazz.isAssignableFrom(field.getDeclaringClass()) && clazz != field.getDeclaringClass())
+                    return field;
+            }
+            throw new Exception("BlueOnReplayViewButtonOutSide not found!");
         });
     }
 
@@ -1046,6 +1035,26 @@ public class Unobfuscator {
             return method;
         });
     }
+
+    public synchronized static Method loadCallerMessageEditMethod(ClassLoader loader) throws Exception {
+        return UnobfuscatorCache.getInstance().getMethod(loader, () -> {
+            var methodData1 = dexkit.getMethodData(loadMessageEditMethod(loader));
+            var FMessage = loadFMessageClass(loader);
+            var invokes = methodData1.getInvokes();
+            for (var methodData : invokes) {
+                if (methodData.isConstructor()) continue;
+                var method = methodData.getMethodInstance(loader);
+                if (Modifier.isStatic(method.getModifiers()) &&
+                        method.getParameterCount() == 1 && method.getParameterTypes()[0].equals(FMessage) &&
+                        !method.getReturnType().isPrimitive()
+                ) {
+                    return methodData.getMethodInstance(loader);
+                }
+            }
+            throw new RuntimeException("CallerMessageEdit method not found");
+        });
+    }
+
 
     public synchronized static Method loadGetEditMessageMethod(ClassLoader loader) throws Exception {
         return UnobfuscatorCache.getInstance().getMethod(loader, () -> {
@@ -1251,18 +1260,19 @@ public class Unobfuscator {
 
     public synchronized static Constructor loadSeeMoreConstructor(ClassLoader loader) throws Exception {
         return UnobfuscatorCache.getInstance().getConstructor(loader, () -> {
-            var classList = dexkit.findClass(new FindClass().matcher(new ClassMatcher().
-                    addMethod(new MethodMatcher().addUsingNumber(16384).addUsingNumber(512).addUsingNumber(64).addUsingNumber(16))
-                    .addMethod(new MethodMatcher().paramCount(2).addParamType(int.class).addParamType(boolean.class))));
+            var classList = dexkit.findClass(FindClass.create().matcher(ClassMatcher.create()
+                    .addMethod(MethodMatcher.create().addUsingNumber(16384).addUsingNumber(512).addUsingNumber(64).addUsingNumber(16))
+                    .addMethod(MethodMatcher.create().paramCount(2).paramTypes(int.class, boolean.class))
+                    .addMethod(MethodMatcher.create().paramCount(2, 3).paramTypes(int.class, int.class, int.class))
+            ));
+
             if (classList.isEmpty()) throw new RuntimeException("SeeMore constructor 1 not found");
             var clazzData = classList.get(0);
-            XposedBridge.log(clazzData.toString());
             for (var method : clazzData.getMethods()) {
-                if (Arrays.asList(2, 3).contains(method.getParamCount()) && method.isConstructor() && method.getParamTypes().stream().allMatch(c -> c.getName().equals(int.class.getName()))) {
+                if (method.getParamCount() > 1 && method.isConstructor() && method.getParamTypes().stream().allMatch(c -> c.getName().equals(int.class.getName()))) {
                     return method.getConstructorInstance(loader);
                 }
             }
-
             throw new RuntimeException("SeeMore constructor 2 not found");
         });
     }
@@ -1575,22 +1585,10 @@ public class Unobfuscator {
     }
 
     public synchronized static Method loadTextStatusComposer(ClassLoader classLoader) throws Exception {
-        return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> {
-            var method1 = View.class.getDeclaredMethod("setBackgroundColor", int.class);
-            Class<?> TextStatusComposerFragmentClass = classLoader.loadClass("com.whatsapp.statuscomposer.composer.TextStatusComposerFragment");
-            var fieldInt = ReflectionUtils.findFieldUsingFilter(TextStatusComposerFragmentClass, field -> field.getType() == int.class);
-            var classData = dexkit.getClassData(TextStatusComposerFragmentClass);
-            if (classData == null) throw new RuntimeException("TextStatusComposer class not found");
-
-            var methods = classData.findMethod(FindMethod.create().matcher(MethodMatcher.create()
-                    .addInvoke(DexSignUtil.getMethodDescriptor(method1))
-                    .addUsingField(DexSignUtil.getFieldDescriptor(fieldInt))
-                    .modifiers(Modifier.PUBLIC | Modifier.STATIC)
-            ));
-            if (methods.isEmpty())
-                throw new RuntimeException("TextStatusComposer method not found");
-            return methods.get(methods.size() - 1).getMethodInstance(classLoader);
-        });
+        var methods = dexkit.findMethod(FindMethod.create().matcher(MethodMatcher.create().addUsingString("background_color_key", StringMatchType.Equals).paramCount(1)));
+        if (methods.isEmpty())
+            return null;
+        return methods.single().getMethodInstance(classLoader);
     }
 
     public synchronized static Method loadTextStatusComposer2(ClassLoader classLoader) throws Exception {
@@ -1826,4 +1824,41 @@ public class Unobfuscator {
             throw new RuntimeException("FMessage Timestamp method not found");
         });
     }
+
+    public static Class<?> loadStatusDistributionClass(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getClass(classLoader, () -> {
+            var clazz = findFirstClassUsingStrings(classLoader, StringMatchType.Equals, "Only set a valid status distribution mode");
+            if (clazz == null) throw new RuntimeException("StatusDistribution not found!");
+            return clazz;
+        });
+    }
+
+    public static Method loadChangeTitleLogoMethod(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getMethod(classLoader, () -> {
+            var id = Utils.getID("toolbar_logo", "id");
+            var methodData = dexkit.findMethod(
+                    FindMethod.create()
+                            .matcher(MethodMatcher.create().addUsingNumber(id))
+            );
+            if (methodData.isEmpty())
+                throw new RuntimeException("ChangeTitleLogo method not found");
+            return methodData.get(0).getMethodInstance(classLoader);
+        });
+    }
+
+    public static Field loadChangeTitleLogoField(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getField(classLoader, () -> {
+            var methodData = dexkit.getMethodData(loadChangeTitleLogoMethod(classLoader));
+            var clazz = XposedHelpers.findClass("com.whatsapp.HomeActivity", classLoader);
+            var usingFields = methodData.getUsingFields();
+            for (var uField : usingFields) {
+                var field = uField.getField().getFieldInstance(classLoader);
+                if (field.getDeclaringClass() == clazz && field.getType() == Integer.class) {
+                    return field;
+                }
+            }
+            throw new RuntimeException("ChangeTitleLogo field not found");
+        });
+    }
+
 }
