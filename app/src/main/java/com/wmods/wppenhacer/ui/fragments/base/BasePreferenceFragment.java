@@ -107,12 +107,10 @@ public abstract class BasePreferenceFragment extends PreferenceFragmentCompat im
         var lite_mode = mPrefs.getBoolean("lite_mode", false);
 
         if (lite_mode) {
-            setPreferenceState("changecolor", false);
             setPreferenceState("wallpaper", false);
             setPreferenceState("custom_filters", false);
             setPreferenceState("download_local", false);
         }
-
 
         if (Objects.equals(key, "thememode")) {
             var mode = Integer.parseInt(mPrefs.getString("thememode", "0"));
@@ -125,14 +123,13 @@ public abstract class BasePreferenceFragment extends PreferenceFragmentCompat im
         }
 
         var igstatus = mPrefs.getBoolean("igstatus", false);
-        var verticalstatus = mPrefs.getBoolean("verticalstatus", false);
         setPreferenceState("oldstatus", !igstatus);
 
         var oldstatus = mPrefs.getBoolean("oldstatus", false);
         setPreferenceState("verticalstatus", !oldstatus);
         setPreferenceState("channels", !oldstatus);
         setPreferenceState("removechannel_rec", !oldstatus);
-        setPreferenceState("facebookstyle", !(oldstatus || verticalstatus));
+        setPreferenceState("status_style", !oldstatus);
         setPreferenceState("igstatus", !oldstatus);
 
         var channels = mPrefs.getBoolean("channels", false);

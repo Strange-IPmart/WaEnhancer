@@ -51,18 +51,14 @@ public class Others extends Feature {
 
         // receivedIncomingTimestamp
 
-        properties = Utils.extractProperties(prefs.getString("custom_css", ""));
+        properties = Utils.getProperties(prefs, "custom_css", "custom_filters");
 
-        var novoTema = prefs.getBoolean("novotema", false);
         var menuWIcons = prefs.getBoolean("menuwicon", false);
         var newSettings = prefs.getBoolean("novaconfig", false);
         var filterChats = prefs.getString("chatfilter", null);
-        var strokeButtons = prefs.getBoolean("strokebuttons", false);
-        var outlinedIcons = prefs.getBoolean("outlinedicons", false);
         var filterSeen = prefs.getBoolean("filterseen", false);
-        var fbstyle = Integer.parseInt(prefs.getString("facebookstyle", "0"));
+        var status_style = Integer.parseInt(prefs.getString("status_style", "0"));
         var metaai = prefs.getBoolean("metaai", false);
-        var topnav = prefs.getBoolean("topnav", false);
         var proximity = prefs.getBoolean("proximity_audios", false);
         var showOnline = prefs.getBoolean("showonline", false);
         var floatingMenu = prefs.getBoolean("floatingmenu", false);
@@ -73,20 +69,14 @@ public class Others extends Feature {
         var audio_transcription = prefs.getBoolean("audio_transcription", false);
         var oldStatus = prefs.getBoolean("oldstatus", false);
         var igstatus = prefs.getBoolean("igstatus", false);
-        var verticalStatus = prefs.getBoolean("verticalstatus", false);
         var animationEmojis = prefs.getBoolean("animation_emojis", false);
 
         propsInteger.put(3877, oldStatus ? igstatus ? 2 : 0 : 2);
         propsBoolean.put(5171, filterSeen); // filtros de chat e grupos
-        propsBoolean.put(4524, novoTema);
         propsBoolean.put(4497, menuWIcons);
         propsBoolean.put(4023, newSettings);
         propsBoolean.put(8013, Objects.equals(filterChats, "2")); // lupa sera removida e sera adicionado uma barra no lugar.
-        propsBoolean.put(5834, strokeButtons);
-        propsBoolean.put(5509, outlinedIcons);
         propsBoolean.put(2358, false);
-        propsBoolean.put(3289, !topnav);
-        propsBoolean.put(4656, !topnav);
         propsBoolean.put(2889, floatingMenu);
         propsBoolean.put(7769, false);
 
@@ -101,6 +91,9 @@ public class Others extends Feature {
         // disable new toolbar
         propsBoolean.put(11824, false);
         propsBoolean.put(6481, false);
+
+        // Enable music in Stories
+        //propsBoolean.put(13280, true);
 
         propsBoolean.put(6798, true);  // show all status
         propsBoolean.put(3575, animationEmojis);  // auto play emojis settings
@@ -143,14 +136,13 @@ public class Others extends Feature {
             Others.propsBoolean.put(11596, true);
         }
 
-        if (verticalStatus) {
-            propsBoolean.put(6285, true);// fix crash bug in vertical status
-            propsInteger.put(8522, 3);
-            propsInteger.put(8521, 3);
-        } else {
-            propsInteger.put(8522, fbstyle);
-            propsInteger.put(8521, fbstyle);
-        }
+        // Whatsapp Status Style
+        status_style = oldStatus ? 0 : status_style;
+        propsInteger.put(9973, 1);
+        propsBoolean.put(6285, true);
+        propsInteger.put(8522, status_style);
+        propsInteger.put(8521, status_style);
+
 
         hookProps();
         hookMenuOptions(filterChats);
@@ -504,7 +496,7 @@ public class Others extends Feature {
     }
 
     private void hookMenuOptions(String filterChats) {
-        XposedHelpers.findAndHookMethod("com.whatsapp.HomeActivity", classLoader, "onPrepareOptionsMenu", Menu.class, new XC_MethodHook() {
+        XposedHelpers.findAndHookMethod(WppCore.getHomeActivityClass(classLoader), "onPrepareOptionsMenu", Menu.class, new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                 var menu = (Menu) param.args[0];

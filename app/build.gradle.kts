@@ -25,12 +25,26 @@ android {
     compileSdk = 35
     ndkVersion = "27.0.11902837 rc2"
 
+    flavorDimensions += "version"
+
+    productFlavors {
+        create("whatsapp") {
+            dimension = "version"
+            applicationIdSuffix = ""
+        }
+        create("business") {
+            dimension = "version"
+            applicationIdSuffix = ".w4b"
+            resValue("string", "app_name", "Wa Enhancer Business")
+        }
+    }
+
     defaultConfig {
         applicationId = "com.wmods.wppenhacer"
         minSdk = 28
         targetSdk = 34
-        versionCode = 130
-        versionName = "1.4.0-DEV ($gitHash)"
+        versionCode = 150
+        versionName = "1.5.0-DEV ($gitHash)"
         multiDexEnabled = true
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -142,7 +156,6 @@ dependencies {
     implementation(libs.filepicker)
     implementation(libs.betterypermissionhelper)
     implementation(libs.bcpkix.jdk18on)
-    implementation(libs.assemblyai.java)
 }
 
 configurations.all {
@@ -153,29 +166,30 @@ configurations.all {
 }
 
 afterEvaluate {
-    tasks.findByName("installDebug")?.doLast {
-        runCatching {
-            runBlocking {
-                exec {
-                    commandLine(
-                        "adb",
-                        "shell",
-                        "am",
-                        "force-stop",
-                        project.properties["debug_package_name"]?.toString()
-                    )
+    listOf("installWhatsappDebug", "installBusinessDebug").forEach { taskName ->
+        tasks.findByName(taskName)?.doLast {
+            runCatching {
+                runBlocking {
+                    exec {
+                        commandLine(
+                            "adb",
+                            "shell",
+                            "am",
+                            "force-stop",
+                            project.properties["debug_package_name"]?.toString()
+                        )
+                    }
+                    delay(500)
+                    exec {
+                        commandLine(
+                            "adb",
+                            "shell",
+                            "am",
+                            "start",
+                            project.properties["debug_package_name"].toString() + "/com.whatsapp.HomeActivity"
+                        )
+                    }
                 }
-                delay(500)
-                exec {
-                    commandLine(
-                        "adb",
-                        "shell",
-                        "am",
-                        "start",
-                        project.properties["debug_package_name"].toString() + "/com.whatsapp.HomeActivity"
-                    )
-                }
-
             }
         }
     }

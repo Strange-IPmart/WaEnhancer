@@ -16,7 +16,6 @@ import java.lang.reflect.Method;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XSharedPreferences;
 import de.robv.android.xposed.XposedBridge;
-import de.robv.android.xposed.XposedHelpers;
 
 public class TagMessage extends Feature {
     public TagMessage(ClassLoader loader, XSharedPreferences preferences) {
@@ -36,7 +35,6 @@ public class TagMessage extends Feature {
             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                 if (!prefs.getBoolean("hidetag", false)) return;
                 var arg = (long) param.args[0];
-                logDebug("arg: " + arg);
                 if (arg == 1) {
                     if (ReflectionUtils.isCalledFromClass(forwardClass)) {
                         param.args[0] = 0;
@@ -77,7 +75,6 @@ public class TagMessage extends Feature {
 
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                 if (keyObj != null) {
-                    var find = XposedHelpers.getObjectField(param.thisObject, "A2u");
                     keyObj.setIsFromMe(false);
                 }
             }

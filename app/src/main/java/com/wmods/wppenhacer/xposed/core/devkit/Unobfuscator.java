@@ -15,6 +15,7 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
+import com.wmods.wppenhacer.xposed.core.WppCore;
 import com.wmods.wppenhacer.xposed.utils.ReflectionUtils;
 import com.wmods.wppenhacer.xposed.utils.Utils;
 
@@ -24,6 +25,7 @@ import org.luckypray.dexkit.query.FindMethod;
 import org.luckypray.dexkit.query.enums.StringMatchType;
 import org.luckypray.dexkit.query.matchers.ClassMatcher;
 import org.luckypray.dexkit.query.matchers.MethodMatcher;
+import org.luckypray.dexkit.query.matchers.MethodsMatcher;
 import org.luckypray.dexkit.query.matchers.base.OpCodesMatcher;
 import org.luckypray.dexkit.result.ClassData;
 import org.luckypray.dexkit.result.ClassDataList;
@@ -763,12 +765,20 @@ public class Unobfuscator {
                     ClassMatcher.create().methodCount(1).addFieldForType(class1)
             ));
             if (classView.isEmpty()) classView = dexkit.findClass(FindClass.create().matcher(
-                    ClassMatcher.create().methodCount(1, 2)
-                            .addMethod(MethodMatcher.create().paramTypes(View.class, boolean.class, boolean.class))
+                    ClassMatcher.create()
+                            .addMethod(MethodMatcher.create().invokeMethods(
+                                    MethodsMatcher.create().methods(
+                                            Collections.singletonList(
+                                                    MethodMatcher.create().declaredClass(ClassMatcher.create().addUsingString("INVOKE_RETURN"))
+                                                            .paramTypes(View.class, int.class)
+                                            )
+                                    )
+                            ))
                             .addFieldForType(class1)
             ));
             if (classView.isEmpty()) throw new Exception("StatusPlaybackView field not found");
-            Class<?> clsViewStatus = classView.get(0).getInstance(loader);
+            Class<?> clsViewStatus = classView.single(classData -> classData.getSuperClass().getSimpleName().equals("Object")).getInstance(loader);
+            if (classView.isEmpty()) throw new Exception("StatusPlaybackView field not found 2");
             Class<?> class2 = XposedHelpers.findClass("com.whatsapp.status.playback.fragment.StatusPlaybackBaseFragment", loader);
             return Arrays.stream(class2.getDeclaredFields()).filter(f -> f.getType() == clsViewStatus).findFirst().orElse(null);
         });
@@ -847,15 +857,12 @@ public class Unobfuscator {
     }
 
     public synchronized static Class<?> loadViewHolder(ClassLoader loader) throws Exception {
-        Class<?> classViewHolder = XposedHelpers.findClassIfExists("com.whatsapp.conversationslist.ViewHolder", loader);
-
-        // for 20.xx, the current implementation returns null
-        if (classViewHolder == null) {
+        return UnobfuscatorCache.getInstance().getClass(loader, () -> {
             Method method = findFirstMethodUsingStrings(loader, StringMatchType.Contains, "conversations/click/jid ");
-            classViewHolder = method.getParameterTypes()[0];
-        }
-
-        return classViewHolder;
+            if (method == null || method.getParameterCount() == 0)
+                throw new RuntimeException("ViewHolder not found!");
+            return method.getParameterTypes()[0];
+        });
     }
 
     public synchronized static Field loadViewHolderField1(ClassLoader loader) throws Exception {
@@ -1585,10 +1592,7 @@ public class Unobfuscator {
     }
 
     public synchronized static Method loadTextStatusComposer(ClassLoader classLoader) throws Exception {
-        var methods = dexkit.findMethod(FindMethod.create().matcher(MethodMatcher.create().addUsingString("background_color_key", StringMatchType.Equals).paramCount(1)));
-        if (methods.isEmpty())
-            return null;
-        return methods.single().getMethodInstance(classLoader);
+        return findFirstMethodUsingStrings(classLoader, StringMatchType.Contains, "Can't put value with type");
     }
 
     public synchronized static Method loadTextStatusComposer2(ClassLoader classLoader) throws Exception {
@@ -1803,6 +1807,14 @@ public class Unobfuscator {
                     MethodMatcher.create().addUsingString("enable_media_quality_tool").
                             returnType(boolean.class)
             ));
+
+            if (methodData.isEmpty()) {
+                methodData = dexkit.findMethod(FindMethod.create().matcher(
+                        MethodMatcher.create().addUsingString("show_media_quality_toggle").
+                                returnType(boolean.class)
+                ));
+            }
+
             if (methodData.isEmpty())
                 throw new RuntimeException("MediaQualitySelection method not found");
             return methodData.get(0).getMethodInstance(classLoader);
@@ -1849,7 +1861,7 @@ public class Unobfuscator {
     public static Field loadChangeTitleLogoField(ClassLoader classLoader) throws Exception {
         return UnobfuscatorCache.getInstance().getField(classLoader, () -> {
             var methodData = dexkit.getMethodData(loadChangeTitleLogoMethod(classLoader));
-            var clazz = XposedHelpers.findClass("com.whatsapp.HomeActivity", classLoader);
+            var clazz = WppCore.getHomeActivityClass(classLoader);
             var usingFields = methodData.getUsingFields();
             for (var uField : usingFields) {
                 var field = uField.getField().getFieldInstance(classLoader);

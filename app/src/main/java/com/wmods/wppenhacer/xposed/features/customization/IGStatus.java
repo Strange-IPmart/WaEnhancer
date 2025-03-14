@@ -37,6 +37,8 @@ public class IGStatus extends Feature {
         if (!prefs.getBoolean("igstatus", false))
             return;
 
+        var fabintMethod = Unobfuscator.loadFabMethod(classLoader);
+
         var getViewConversationMethod = Unobfuscator.loadGetViewConversationMethod(classLoader);
         XposedBridge.hookMethod(getViewConversationMethod, new XC_MethodHook() {
             @Override
@@ -47,7 +49,7 @@ public class IGStatus extends Feature {
                     return;
                 var view = (ViewGroup) param.getResult();
                 if (view == null) return;
-                var list = view.findViewById(android.R.id.list);
+                var list = (ViewGroup) view.findViewById(android.R.id.list);
                 var mStatusContainer = new IGStatusView(WppCore.getCurrentActivity());
                 if (list instanceof ListView listView) {
                     listView.setNestedScrollingEnabled(true);
@@ -58,12 +60,21 @@ public class IGStatus extends Feature {
                     // RecyclerView
                     var paddingTop = list.getPaddingTop();
                     var parentView = (ViewGroup) list.getParent();
+                    var background = list.getBackground();
+                    mStatusContainer.setBackground(background);
                     list.setPadding(0, 0, 0, 0);
                     var layoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Utils.dipToPixels(88));
                     layoutParams.topMargin = paddingTop;
                     mStatusContainer.setLayoutParams(layoutParams);
                     parentView.addView(mStatusContainer, 0);
                 }
+                var id = (int) fabintMethod.invoke(param.thisObject);
+                var igStatus = mListStatusContainer.stream().filter(ig -> ig.getFragmentId() == id).findFirst().orElse(null);
+                if (igStatus != null) {
+                    mStatusContainer.setAdapter(igStatus.getAdapter());
+                    mListStatusContainer.remove(igStatus);
+                }
+                mStatusContainer.setFragmentId(id);
                 mListStatusContainer.add(mStatusContainer);
             }
         });

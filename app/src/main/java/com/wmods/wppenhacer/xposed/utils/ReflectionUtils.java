@@ -228,18 +228,11 @@ public class ReflectionUtils {
 
     public static boolean isClassSimpleNameString(Class<?> aClass, String s) {
         try {
-            Class<?> search = XposedHelpers.findClassIfExists("android.view." + s, aClass.getClassLoader());
-            if (search != null)
-                search = XposedHelpers.findClassIfExists("android.widget." + s, aClass.getClassLoader());
-            Class<?> cls = aClass;
+            var cls = aClass;
             do {
-                if (search != null) {
-                    if (cls.getName().equals(search.getName())) return true;
-                    if (cls.getName().startsWith("android.widget.") || cls.getName().startsWith("android.view."))
-                        return false;
-                } else {
-                    if (cls.getSimpleName().contains(s)) return true;
-                }
+                if (cls.getSimpleName().equals(s)) return true;
+                if (cls.getName().startsWith("android.widget.") || cls.getName().startsWith("android.view."))
+                    return false;
             } while ((cls = cls.getSuperclass()) != null);
         } catch (Exception ignored) {
         }
@@ -262,6 +255,12 @@ public class ReflectionUtils {
                 return true;
         }
         return false;
+    }
+
+    public static <T> T getArg(Object[] args, Class<T> typeClass, int i) {
+        var list = findArrayOfType(args, typeClass);
+        if (list.size() <= i) throw new IllegalArgumentException("Index out of bounds for args");
+        return typeClass.cast(list.get(i).second);
     }
 
 }

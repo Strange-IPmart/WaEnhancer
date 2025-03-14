@@ -26,7 +26,7 @@ import com.wmods.wppenhacer.xposed.core.components.SharedPreferencesWrapper;
 import com.wmods.wppenhacer.xposed.core.devkit.Unobfuscator;
 import com.wmods.wppenhacer.xposed.core.devkit.UnobfuscatorCache;
 import com.wmods.wppenhacer.xposed.features.customization.BubbleColors;
-import com.wmods.wppenhacer.xposed.features.customization.CustomTheme;
+import com.wmods.wppenhacer.xposed.features.customization.CustomThemeV2;
 import com.wmods.wppenhacer.xposed.features.customization.CustomTime;
 import com.wmods.wppenhacer.xposed.features.customization.CustomToolbar;
 import com.wmods.wppenhacer.xposed.features.customization.CustomView;
@@ -124,13 +124,14 @@ public class FeatureLoader {
                 currentVersion = packageInfo.versionName;
                 supportedVersions = Arrays.asList(mApp.getResources().getStringArray(Objects.equals(mApp.getPackageName(), FeatureLoader.PACKAGE_WPP) ? ResId.array.supported_versions_wpp : ResId.array.supported_versions_business));
                 try {
+
                     var timemillis = System.currentTimeMillis();
-                    SharedPreferencesWrapper.hookInit(mApp.getClassLoader());
-                    UnobfuscatorCache.init(mApp);
-                    WppCore.Initialize(loader, pref);
                     if (supportedVersions.stream().noneMatch(s -> packageInfo.versionName.startsWith(s.replace(".xx", ""))) && !pref.getBoolean("bypass_version_check", false)) {
                         throw new Exception("Unsupported version: " + packageInfo.versionName);
                     }
+                    SharedPreferencesWrapper.hookInit(mApp.getClassLoader());
+                    UnobfuscatorCache.init(mApp);
+                    WppCore.Initialize(loader, pref);
                     DesignUtils.setPrefs(pref);
                     initComponents(loader, pref);
                     plugins(loader, pref, packageInfo.versionName);
@@ -154,7 +155,7 @@ public class FeatureLoader {
             }
         });
 
-        XposedHelpers.findAndHookMethod("com.whatsapp.HomeActivity", loader, "onCreate", Bundle.class, new XC_MethodHook() {
+        XposedHelpers.findAndHookMethod(WppCore.getHomeActivityClass(loader), "onCreate", Bundle.class, new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                 super.afterHookedMethod(param);
@@ -183,20 +184,20 @@ public class FeatureLoader {
         FMessageWpp.initialize(loader);
         Utils.init(loader);
         WppCore.addListenerActivity((activity, state) -> {
-            // Check for Change Preferences
-            if (state == WppCore.ActivityChangeState.ChangeType.RESUME) {
+
+            if (state == WppCore.ActivityChangeState.ChangeType.RESUMED) {
                 checkUpdate(activity);
             }
 
             // Check for WAE Update
             if (App.isOriginalPackage() && pref.getBoolean("update_check", true)) {
-                if (activity.getClass().getSimpleName().equals("HomeActivity") && state == WppCore.ActivityChangeState.ChangeType.START) {
+                if (activity.getClass().getSimpleName().equals("HomeActivity") && state == WppCore.ActivityChangeState.ChangeType.CREATED) {
                     CompletableFuture.runAsync(new UpdateChecker(activity));
                 }
             }
         });
-
     }
+
 
     private static void checkUpdate(@NonNull Activity activity) {
         if (WppCore.getPrivBoolean("need_restart", false)) {
@@ -273,8 +274,8 @@ public class FeatureLoader {
                 BubbleColors.class,
                 CallPrivacy.class,
                 ActivityController.class,
-                CustomTheme.class,
-//                CustomThemeV2.class,
+//                CustomTheme.class,
+                CustomThemeV2.class,
                 ChatLimit.class,
                 SeparateGroup.class,
                 ShowOnline.class,
@@ -317,7 +318,7 @@ public class FeatureLoader {
                 GoogleTranslate.class
         };
         XposedBridge.log("Loading Plugins");
-        var executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        var executorService = Executors.newWorkStealingPool(Math.min(Runtime.getRuntime().availableProcessors(), 4));
         var times = new ArrayList<String>();
         for (var classe : classes) {
             CompletableFuture.runAsync(() -> {
