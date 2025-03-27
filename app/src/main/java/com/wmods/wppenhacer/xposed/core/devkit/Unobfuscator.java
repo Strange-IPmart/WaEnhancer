@@ -689,6 +689,29 @@ public class Unobfuscator {
         });
     }
 
+    public synchronized static Method loadHomeConversationFragmentMethod(ClassLoader loader) throws Exception {
+        return UnobfuscatorCache.getInstance().getMethod(loader, () -> {
+            var homeClass = WppCore.getHomeActivityClass(loader);
+            var convFragment = XposedHelpers.findClass("com.whatsapp.ConversationFragment", loader);
+            MethodData method = dexkit.findMethod(FindMethod.create()
+                    .searchInClass(
+                            Collections.singletonList(
+                                    dexkit.getClassData(homeClass)))
+                    .matcher(MethodMatcher.create().returnType(convFragment))).singleOrNull();
+            if (method == null) throw new Exception("HomeConversationFragmentMethod not found");
+            return method.getMethodInstance(loader);
+        });
+    }
+
+    public synchronized static Field loadAntiRevokeConvFragmentField(ClassLoader loader) throws Exception {
+        return UnobfuscatorCache.getInstance().getField(loader, () -> {
+            Class<?> chatClass = findFirstClassUsingStrings(loader, StringMatchType.Contains, "conversation/createconversation");
+            Class<?> conversation = XposedHelpers.findClass("com.whatsapp.ConversationFragment", loader);
+            Field field = ReflectionUtils.getFieldByType(conversation, chatClass);
+            if (field == null) throw new Exception("AntiRevokeConvChat field not found");
+            return field;
+        });
+    }
 
     public synchronized static Field loadAntiRevokeConvChatField(ClassLoader loader) throws Exception {
         return UnobfuscatorCache.getInstance().getField(loader, () -> {
@@ -1754,7 +1777,6 @@ public class Unobfuscator {
     }
 
     public static synchronized Class loadUnkTranscript(ClassLoader classLoader) throws Exception {
-        return UnobfuscatorCache.getInstance().getClass(classLoader, () -> {
             var loadTranscribe = loadTranscribeMethod(classLoader);
             var callbackClass = loadTranscribe.getParameterTypes()[1];
             var onComplete = ReflectionUtils.findMethodUsingFilter(callbackClass, method -> method.getParameterCount() == 4);
@@ -1762,9 +1784,8 @@ public class Unobfuscator {
             Log.i(TAG, resultTypeClass);
             var classDataList = dexkit.findClass(FindClass.create().matcher(ClassMatcher.create().addUsingString("Unknown").superClass(resultTypeClass)));
             if (classDataList.isEmpty())
-                throw new RuntimeException("UnkTranscript class not found");
+                return null;
             return classDataList.get(0).getInstance(classLoader);
-        });
     }
 
     public static synchronized Class loadTranscriptSegment(ClassLoader classLoader) throws Exception {
@@ -1873,4 +1894,14 @@ public class Unobfuscator {
         });
     }
 
+    public static Class<?> loadFilterItemClass(ClassLoader classLoader) throws Exception {
+        return UnobfuscatorCache.getInstance().getClass(classLoader, () -> {
+            var methodList = dexkit.findMethod(FindMethod.create().matcher(
+                    MethodMatcher.create().addUsingNumber(Utils.getID("invisible_height_placeholder","id"))
+                            .addUsingNumber(Utils.getID("container_view","id"))
+            ));
+            if (methodList.isEmpty())throw new RuntimeException("FilterItemClass Not Found");
+            return methodList.get(0).getClassInstance(classLoader);
+        });
+    }
 }
