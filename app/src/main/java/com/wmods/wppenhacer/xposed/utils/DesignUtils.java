@@ -119,7 +119,11 @@ public class DesignUtils {
 
     // Colors
     public static int getPrimaryTextColor() {
-        return DesignUtils.isNightMode() ? 0xfffffffe : 0xff000001;
+        var textColor = mPrefs.getInt("text_color", 0);
+        if (textColor == 0 || !mPrefs.getBoolean("changecolor", false)) {
+            return DesignUtils.isNightMode() ? 0xfffffffe : 0xff000001;
+        }
+        return textColor;
     }
 
 
@@ -145,7 +149,7 @@ public class DesignUtils {
         if (primaryColorInt != 0 && mPrefs.getBoolean("changecolor", false)) {
             var bitmap = drawableToBitmap(drawable);
             var color = getDominantColor(bitmap);
-            bitmap = replaceColor(bitmap, color, primaryColorInt, 50);
+            bitmap = replaceColor(bitmap, color, primaryColorInt, 120);
             return new BitmapDrawable(Utils.getApplication().getResources(), bitmap);
         }
         return null;
@@ -162,7 +166,7 @@ public class DesignUtils {
     }
 
     public static boolean isNightMode() {
-        return WppCore.getDefaultTheme() == -1 ? isNightModeBySystem() : WppCore.getDefaultTheme() == 2;
+        return WppCore.getDefaultTheme() <= 0 ? isNightModeBySystem() : WppCore.getDefaultTheme() == 2;
     }
 
     public static boolean isNightModeBySystem() {

@@ -223,6 +223,14 @@ public class WppCore {
                 : XposedHelpers.findClass("com.whatsapp.home.ui.TabsPager", loader);
     }
 
+    public synchronized static Class getViewOnceViewerActivityClass(@NonNull ClassLoader loader) {
+        Class oldClass = XposedHelpers.findClassIfExists("com.whatsapp.messaging.ViewOnceViewerActivity", loader);
+
+        return oldClass != null
+                ? oldClass
+                : XposedHelpers.findClass("com.whatsapp.viewonce.ui.messaging.ViewOnceViewerActivity", loader);
+    }
+
 //    public static Activity getActivityBySimpleName(String name) {
 //        for (var activity : activities) {
 //            if (activity.getClass().getSimpleName().equals(name)) {
@@ -291,7 +299,7 @@ public class WppCore {
     public static Object getFMessageFromKey(Object messageKey) {
         if (messageKey == null) return null;
         try {
-            var methodResult = ReflectionUtils.findMethodUsingFilter(mCachedMessageStore.getClass(), (method) -> method.getParameterCount() == 1 && FMessageWpp.Key.TYPE.isAssignableFrom(method.getParameterTypes()[0]));
+            var methodResult = ReflectionUtils.findMethodUsingFilter(mCachedMessageStore.getClass(), (method) -> method.getParameterCount() == 1 && FMessageWpp.Key.TYPE.isAssignableFrom(method.getParameterTypes()[0]) && method.getReturnType() == FMessageWpp.TYPE);
             return ReflectionUtils.callMethod(methodResult, mCachedMessageStore, messageKey);
         } catch (Exception e) {
             XposedBridge.log(e);

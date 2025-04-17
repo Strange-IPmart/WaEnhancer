@@ -55,7 +55,7 @@ public class DownloadViewOnce extends Feature {
                     if (fmessageField == null) return;
                     var fMessage = new FMessageWpp(fmessageField.get(param.thisObject));
                     // check media is view once
-                    if (fMessage.getMediaType() != 42 && fMessage.getMediaType() != 43) return;
+                    if (!fMessage.isViewOnce()) return;
                     Menu menu = (Menu) param.args[0];
                     MenuItem item = menu.add(0, 0, 0, ResId.string.download).setIcon(ResId.drawable.download);
                     item.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
@@ -73,7 +73,7 @@ public class DownloadViewOnce extends Feature {
 
             });
             // View Once Activity
-            XposedHelpers.findAndHookMethod("com.whatsapp.messaging.ViewOnceViewerActivity", classLoader, "onCreateOptionsMenu", classLoader.loadClass("android.view.Menu"),
+            XposedHelpers.findAndHookMethod(WppCore.getViewOnceViewerActivityClass(classLoader), "onCreateOptionsMenu", classLoader.loadClass("android.view.Menu"),
                     new XC_MethodHook() {
                         @Override
                         protected void afterHookedMethod(MethodHookParam param) throws Throwable {

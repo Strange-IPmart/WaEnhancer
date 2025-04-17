@@ -37,7 +37,6 @@
     <string name="conversation">Conversation Screen</string>
     <string name="primary_color">Primary Color</string>
     <string name="background_color">Background Color</string>
-    <string name="secondary_color">Secondary Color</string>
     <string name="novaconfig">New Settings Style</string>
     <string name="novaconfig_sum">Enable the new settings style, with profile photo on home screen toolbar</string>
     <string name="novofiltro">Search Functions</string>
@@ -409,4 +408,11 @@
     <string name="select_contacts">Select Contacts</string>
     <string name="style_of_stories_status">Style of Stories/Status</string>
     <string name="style_of_stories_status_sum">Changes Stories/Status style to some models available on WhatsApp</string>
+    <string name="view_seen_tick">View Seen Tick</string>
+    <string name="view_seen_tick_sum">Show an icon if the message view was sent to the recipient or unique view was seen</string>
+    <string name="text_color">Text Color</string>
+    <string name="disable_the_proximity_sensor">Disable Screen off on proximity sensor</string>
+    <string name="disable_the_proximity_sensor_sum">Disable Screen off on proximity sensor to the whole WhatsApp</string>
+    <string name="disable_status_in_the_profile_photo">Disable Status in the profile photo</string>
+    <string name="disable_status_in_the_profile_photo_sum">Disables the circle that appears in the profile photo of each contact when there is new status</string>
 </resources>

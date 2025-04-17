@@ -1,10 +1,5 @@
-[BUGS FIXED]
-* Fixed issues with background color transparency
-* Fixed issues with send on reply
-* Fixed issues with double tap to reaction
+[WHATSAPP]
+* Add support for WhatsApp 2.25.10.XX and 2.25.11.XX (Thanks to frknkrc44)
 
 [IMPROVEMENTS]
-* Improved table mode support (Thanks to frknkrc44)
-
-[WHATSAPP]
-* Added support for WhatsApp 2.25.7.XX
+* Improved warning in README.md (Thanks to pedroborraz)

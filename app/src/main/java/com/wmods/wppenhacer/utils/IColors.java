@@ -7,9 +7,12 @@ import java.util.HashMap;
 public class IColors {
     public static HashMap<String, String> colors = new HashMap<>();
 
+
+    public static HashMap<String, String> alphacolors = new HashMap<>();
+
     public static final HashMap<String, String> backgroundColors = new HashMap<>();
     public static final HashMap<String, String> primaryColors = new HashMap<>();
-    public static final HashMap<String, String> secondaryColors = new HashMap<>();
+    public static final HashMap<String, String> textColors = new HashMap<>();
 
     public static int parseColor(String str) {
         return Color.parseColor(str);
@@ -32,7 +35,7 @@ public class IColors {
         if (newColor != null && newColor.length() == 9) {
             return IColors.parseColor(newColor);
         } else {
-            if (!sColor.equals("#0") && !sColor.startsWith("#ff")) {
+            if (!sColor.startsWith("#ff")) {
                 var sColorSub = sColor.substring(0, 3);
                 newColor = colors.get(sColor.substring(3));
                 if (newColor != null) {
@@ -45,7 +48,7 @@ public class IColors {
 
     public static void initColors() {
         primaryColors.clear();
-        secondaryColors.clear();
+        textColors.clear();
         backgroundColors.clear();
         colors.clear();
 
@@ -65,11 +68,11 @@ public class IColors {
         primaryColors.put("#ff144d37", "#ff144d37");
         primaryColors.put("#ff1b8755", "#ff1b8755");
         primaryColors.put("#ff15603e", "#ff15603e");
-        primaryColors.put("#ff103529", "#ff103529");
+        primaryColors.put("#ff103529", "#c0103529");
 
-        // secundary colors
-        secondaryColors.put("#ffeaedee", "#ffeaedee");
-        secondaryColors.put("#fff7f8fa", "#fff7f8fa");
+        // text colors
+        textColors.put("#ffeaedee", "#ffeaedee");
+        textColors.put("#fff7f8fa", "#fff7f8fa");
 
         // background colors
         backgroundColors.put("0b141a", "0a1014");
@@ -80,5 +83,8 @@ public class IColors {
         backgroundColors.put("#ff10161a", "#ff10161a");
         backgroundColors.put("#ff12181c", "#ff12181c");
         backgroundColors.put("#ff20272b", "#ff20272b");
+
+        // Alpha colors
+        alphacolors.put("#ff15603e", "#8015603e");
     }
 }
