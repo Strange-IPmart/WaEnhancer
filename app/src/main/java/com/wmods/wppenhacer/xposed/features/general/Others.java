@@ -23,6 +23,7 @@ import com.wmods.wppenhacer.xposed.utils.ResId;
 import com.wmods.wppenhacer.xposed.utils.Utils;
 
 import org.json.JSONObject;
+import org.luckypray.dexkit.query.enums.StringMatchType;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -60,7 +61,7 @@ public class Others extends Feature {
         var filterChats = prefs.getString("chatfilter", null);
         var filterSeen = prefs.getBoolean("filterseen", false);
         var status_style = Integer.parseInt(prefs.getString("status_style", "0"));
-        var metaai = prefs.getBoolean("metaai", false);
+        var disableMetaAI = prefs.getBoolean("metaai", false);
         var disable_sensor_proximity = prefs.getBoolean("disable_sensor_proximity", false);
         var proximity_audios = prefs.getBoolean("proximity_audios", false);
         var showOnline = prefs.getBoolean("showonline", false);
@@ -76,11 +77,15 @@ public class Others extends Feature {
         var disableProfileStatus = prefs.getBoolean("disable_profile_status", false);
 
         propsInteger.put(3877, oldStatus ? igstatus ? 2 : 0 : 2);
-        propsBoolean.put(5171, filterSeen); // filtros de chat e grupos
+        propsBoolean.put(5171, filterSeen);
         propsBoolean.put(4497, menuWIcons);
         propsBoolean.put(4023, newSettings);
-        propsBoolean.put(8013, Objects.equals(filterChats, "2")); // lupa sera removida e sera adicionado uma barra no lugar.
+        if (disableMetaAI)
+            propsBoolean.put(8013, Objects.equals(filterChats, "2"));
         propsBoolean.put(2889, floatingMenu);
+
+        // new text composer
+        propsBoolean.put(15708, true);
 
         // change page id
         propsBoolean.put(2358, false);
@@ -149,12 +154,11 @@ public class Others extends Feature {
         propsBoolean.put(0x32ca, true);
         propsBoolean.put(0x32cb, true);
 
-        if (metaai) {
+        if (disableMetaAI) {
             propsBoolean.put(8025, false);
             propsBoolean.put(6251, false);
-            propsBoolean.put(7639, false);
-            propsBoolean.put(10379, false);
-            propsBoolean.put(10388, false);
+            propsBoolean.put(8026, false);
+            propsBoolean.put(14886, false);
         }
 
         if (audio_transcription) {
@@ -277,8 +281,8 @@ public class Others extends Feature {
     private void callInfo() throws Exception {
         if (!prefs.getBoolean("call_info", false)) return;
 
-        var clsCallEventCallback = classLoader.loadClass("com.whatsapp.calling.service.VoiceServiceEventCallback");
-        Class<?> clsWamCall = classLoader.loadClass("com.whatsapp.fieldstats.events.WamCall");
+        var clsCallEventCallback = Unobfuscator.findFirstClassUsingName(classLoader, StringMatchType.EndsWith, "VoiceServiceEventCallback");
+        Class<?> clsWamCall = Unobfuscator.findFirstClassUsingName(classLoader, StringMatchType.EndsWith, "WamCall");
 
         XposedBridge.hookAllMethods(clsCallEventCallback, "fieldstatsReady", new XC_MethodHook() {
             @Override
@@ -441,7 +445,7 @@ public class Others extends Feature {
                 }
             }
         });
-        var voicenoteClass = classLoader.loadClass("com.whatsapp.search.views.itemviews.VoiceNoteProfileAvatarView");
+        var voicenoteClass = Unobfuscator.findFirstClassUsingName(classLoader, StringMatchType.EndsWith, "VoiceNoteProfileAvatarView");
         var method = ReflectionUtils.findAllMethodsUsingFilter(voicenoteClass, method1 -> method1.getParameterCount() == 4 && method1.getParameterTypes()[0] == int.class && method1.getReturnType().equals(void.class));
         XposedBridge.hookMethod(method[method.length - 1], new XC_MethodHook() {
             @SuppressLint("SetTextI18n")
@@ -493,7 +497,7 @@ public class Others extends Feature {
 
 
     private void autoNextStatus() throws Exception {
-        Class<?> StatusPlaybackContactFragmentClass = classLoader.loadClass("com.whatsapp.status.playback.fragment.StatusPlaybackContactFragment");
+        Class<?> StatusPlaybackContactFragmentClass = Unobfuscator.findFirstClassUsingName(classLoader, StringMatchType.EndsWith, "StatusPlaybackContactFragment");
         var runNextStatusMethod = Unobfuscator.loadNextStatusRunMethod(classLoader);
         XposedBridge.hookMethod(runNextStatusMethod, new XC_MethodHook() {
             @Override
@@ -558,7 +562,7 @@ public class Others extends Feature {
     private void hookProps() throws Exception {
         var methodPropsBoolean = Unobfuscator.loadPropsBooleanMethod(classLoader);
         logDebug(Unobfuscator.getMethodDescriptor(methodPropsBoolean));
-        var dataUsageActivityClass = XposedHelpers.findClass("com.whatsapp.settings.SettingsDataUsageActivity", classLoader);
+        var dataUsageActivityClass = WppCore.getDataUsageActivityClass(classLoader);
         XposedBridge.hookMethod(methodPropsBoolean, new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {

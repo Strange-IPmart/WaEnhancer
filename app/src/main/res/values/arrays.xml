@@ -119,26 +119,22 @@
         <item>2</item>
     </string-array>
     <string-array name="supported_versions_wpp">
-        <item>2.25.5.xx</item>
-        <item>2.25.6.xx</item>
-        <item>2.25.7.xx</item>
-        <item>2.25.8.xx</item>
-        <item>2.25.9.xx</item>
-        <item>2.25.10.xx</item>
-        <item>2.25.11.xx</item>
-        <item>2.25.12.xx</item>
-        <item>2.25.13.xx</item>
+        <item>2.25.18.xx</item>
+        <item>2.25.19.xx</item>
+        <item>2.25.20.xx</item>
+        <item>2.25.21.xx</item>
+        <item>2.25.22.xx</item>
+        <item>2.25.23.xx</item>
+        <item>2.25.24.xx</item>
     </string-array>
     <string-array name="supported_versions_business">
-        <item>2.25.5.xx</item>
-        <item>2.25.6.xx</item>
-        <item>2.25.7.xx</item>
-        <item>2.25.8.xx</item>
-        <item>2.25.9.xx</item>
-        <item>2.25.10.xx</item>
-        <item>2.25.11.xx</item>
-        <item>2.25.12.xx</item>
-        <item>2.25.13.xx</item>
+        <item>2.25.18.xx</item>
+        <item>2.25.19.xx</item>
+        <item>2.25.20.xx</item>
+        <item>2.25.21.xx</item>
+        <item>2.25.22.xx</item>
+        <item>2.25.23.xx</item>
+        <item>2.25.24.xx</item>
     </string-array>
     <string-array name="image_picker">
         <item>image/*</item>

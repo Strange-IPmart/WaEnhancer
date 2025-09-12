@@ -79,11 +79,14 @@ import com.wmods.wppenhacer.xposed.features.privacy.TypingPrivacy;
 import com.wmods.wppenhacer.xposed.features.privacy.ViewOnce;
 import com.wmods.wppenhacer.xposed.spoofer.HookBL;
 import com.wmods.wppenhacer.xposed.utils.DesignUtils;
+import com.wmods.wppenhacer.xposed.utils.ReflectionUtils;
 import com.wmods.wppenhacer.xposed.utils.ResId;
 import com.wmods.wppenhacer.xposed.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -94,6 +97,8 @@ import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XSharedPreferences;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
+import lombok.Getter;
+import lombok.Setter;
 
 public class FeatureLoader {
     public static Application mApp;
@@ -131,11 +136,20 @@ public class FeatureLoader {
                 XposedBridge.log(packageInfo.versionName);
                 currentVersion = packageInfo.versionName;
                 supportedVersions = Arrays.asList(mApp.getResources().getStringArray(Objects.equals(mApp.getPackageName(), FeatureLoader.PACKAGE_WPP) ? ResId.array.supported_versions_wpp : ResId.array.supported_versions_business));
+                mApp.registerActivityLifecycleCallbacks(new WaCallback());
+                registerReceivers();
                 try {
-
                     var timemillis = System.currentTimeMillis();
-                    if (supportedVersions.stream().noneMatch(s -> packageInfo.versionName.startsWith(s.replace(".xx", ""))) && !pref.getBoolean("bypass_version_check", false)) {
-                        throw new Exception("Unsupported version: " + packageInfo.versionName);
+                    boolean isSupported = supportedVersions.stream().anyMatch(s -> packageInfo.versionName.startsWith(s.replace(".xx", "")));
+                    if (!isSupported) {
+                        disableExpirationVersion(mApp.getClassLoader());
+                        if (!pref.getBoolean("bypass_version_check", false)) {
+                            String sb = "Unsupported version: " +
+                                    packageInfo.versionName +
+                                    "\n" +
+                                    "Only the function of ignoring the expiration of the WhatsApp version has been applied!";
+                            throw new Exception(sb);
+                        }
                     }
                     SharedPreferencesWrapper.hookInit(mApp.getClassLoader());
                     UnobfuscatorCache.init(mApp);
@@ -143,8 +157,6 @@ public class FeatureLoader {
                     DesignUtils.setPrefs(pref);
                     initComponents(loader, pref);
                     plugins(loader, pref, packageInfo.versionName);
-                    registerReceivers();
-                    mApp.registerActivityLifecycleCallbacks(new WaCallback());
                     sendEnabledBroadcast(mApp);
 //                    XposedHelpers.setStaticIntField(XposedHelpers.findClass("com.whatsapp.util.Log", loader), "level", 5);
                     var timemillis2 = System.currentTimeMillis() - timemillis;
@@ -183,6 +195,19 @@ public class FeatureLoader {
                             })
                             .show();
                 }
+            }
+        });
+    }
+
+    private static void disableExpirationVersion(ClassLoader classLoader) {
+        var expirationClass = Unobfuscator.loadExpirationClass(classLoader);
+        var method = ReflectionUtils.findMethodUsingFilter(expirationClass, m -> m.getReturnType().equals(Date.class));
+        XposedBridge.hookMethod(method, new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                var calendar = Calendar.getInstance();
+                calendar.set(2099, 12, 31);
+                param.setResult(calendar.getTime());
             }
         });
     }
@@ -283,7 +308,6 @@ public class FeatureLoader {
                 BubbleColors.class,
                 CallPrivacy.class,
                 ActivityController.class,
-//                CustomTheme.class,
                 CustomThemeV2.class,
                 ChatLimit.class,
                 SeparateGroup.class,
@@ -361,6 +385,8 @@ public class FeatureLoader {
         }
     }
 
+    @Getter
+    @Setter
     private static class ErrorItem {
         private String pluginName;
         private String whatsAppVersion;
@@ -378,44 +404,5 @@ public class FeatureLoader {
                     "\nerror='" + getError() + '\'';
         }
 
-        public String getWhatsAppVersion() {
-            return whatsAppVersion;
-        }
-
-        public void setWhatsAppVersion(String whatsAppVersion) {
-            this.whatsAppVersion = whatsAppVersion;
-        }
-
-        public String getError() {
-            return error;
-        }
-
-        public void setError(String error) {
-            this.error = error;
-        }
-
-        public String getPluginName() {
-            return pluginName;
-        }
-
-        public void setPluginName(String pluginName) {
-            this.pluginName = pluginName;
-        }
-
-        public String getModuleVersion() {
-            return moduleVersion;
-        }
-
-        public void setModuleVersion(String moduleVersion) {
-            this.moduleVersion = moduleVersion;
-        }
-
-        public String getMessage() {
-            return message;
-        }
-
-        public void setMessage(String message) {
-            this.message = message;
-        }
     }
 }

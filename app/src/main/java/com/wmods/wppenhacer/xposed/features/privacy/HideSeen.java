@@ -97,14 +97,14 @@ public class HideSeen extends Feature {
         Method ReceiptMethod = Unobfuscator.loadReceiptMethod(classLoader);
         logDebug(Unobfuscator.getMethodDescriptor(ReceiptMethod));
 
-        var method3 = Unobfuscator.loadReceiptOutsideChat(classLoader);
-        logDebug("Outside Chat", Unobfuscator.getMethodDescriptor(method3));
+        var outsideMethod = Unobfuscator.loadReceiptOutsideChat(classLoader);
+        logDebug("Outside Chat", Unobfuscator.getMethodDescriptor(outsideMethod));
 
 
         XposedBridge.hookMethod(ReceiptMethod, new XC_MethodHook() {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                if (ReflectionUtils.isCalledFromMethod(method3) || !ReflectionUtils.isCalledFromMethod(hideViewInChatMethod))
+                if (ReflectionUtils.isCalledFromMethod(outsideMethod) || !ReflectionUtils.isCalledFromMethod(hideViewInChatMethod))
                     return;
                 if (!Objects.equals("read", param.args[4])) return;
                 var jid = WppCore.getCurrentRawJID();
@@ -134,7 +134,7 @@ public class HideSeen extends Feature {
             }
         });
 
-        var loadSenderPlayed = Unobfuscator.loadSenderPlayed(classLoader);
+        var loadSenderPlayed = Unobfuscator.loadSenderPlayedMethod(classLoader);
         XposedBridge.hookMethod(loadSenderPlayed, new XC_MethodHook() {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {

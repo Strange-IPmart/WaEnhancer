@@ -1,13 +1,16 @@
 package com.wmods.wppenhacer.xposed.features.privacy;
 
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 
 import com.wmods.wppenhacer.xposed.core.Feature;
 import com.wmods.wppenhacer.xposed.core.components.FMessageWpp;
 import com.wmods.wppenhacer.xposed.core.devkit.Unobfuscator;
+import com.wmods.wppenhacer.xposed.utils.DesignUtils;
 import com.wmods.wppenhacer.xposed.utils.ReflectionUtils;
 import com.wmods.wppenhacer.xposed.utils.Utils;
 
@@ -49,36 +52,31 @@ public class TagMessage extends Feature {
     }
 
     private void hookBroadcastView() throws Exception {
-        Method method1 = Unobfuscator.loadBroadcastTagMethod(classLoader);
 
-        XposedBridge.hookMethod(method1, new XC_MethodHook() {
-            private FMessageWpp.Key keyObj;
+        var bubbleMethod = Unobfuscator.loadAntiRevokeBubbleMethod(classLoader);
+        logDebug(Unobfuscator.getMethodDescriptor(bubbleMethod));
 
+        XposedBridge.hookMethod(bubbleMethod, new XC_MethodHook() {
             @Override
-            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                keyObj = null;
-                var fmessage = new FMessageWpp(param.args[0]);
+            protected void afterHookedMethod(MethodHookParam param) {
+                var objMessage = param.args[2];
+                var dateTextView = (TextView) param.args[1];
+                if (dateTextView == null) return;
+                var fmessage = new FMessageWpp(objMessage);
                 var key = fmessage.getKey();
-                if (!key.isFromMe && fmessage.isBroadcast()) {
-                    var view = (ViewGroup) param.thisObject;
-                    var res = view.findViewById((int) param.args[1]);
-                    if (res == null) {
-                        var dateWrapper = (ViewGroup) view.findViewById(Utils.getID("date_wrapper", "id"));
-                        var broadcast = new ImageView(view.getContext());
-                        broadcast.setId((int) param.args[1]);
+                var dateWrapper = (ViewGroup) dateTextView.getParent();
+                int id = Utils.getID("broadcast_icon", "id");
+                View res = dateWrapper.findViewById(id);
+                if (!key.isFromMe)
+                    if (fmessage.isBroadcast() && res == null) {
+                        var broadcast = new ImageView(dateWrapper.getContext());
+                        broadcast.setId(id);
+                        broadcast.setImageDrawable(DesignUtils.getDrawableByName("broadcast_status_icon"));
                         dateWrapper.addView(broadcast, 0);
+                    } else if (res != null) {
+                        dateWrapper.removeView(res);
                     }
-                    key.setIsFromMe(true);
-                    keyObj = key;
-                }
             }
-
-            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                if (keyObj != null) {
-                    keyObj.setIsFromMe(false);
-                }
-            }
-
         });
     }
 

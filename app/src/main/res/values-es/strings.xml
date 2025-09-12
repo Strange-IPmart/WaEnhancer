@@ -35,11 +35,10 @@
     <string name="conversation">Conversación - Chat</string>
     <string name="primary_color">Color primario</string>
     <string name="background_color">Color del fondo (Background)</string>
-    <string name="secondary_color">Color secundario</string>
     <string name="novaconfig">Nuevo estilo del apartado \'Ajustes\'</string>
     <string name="novaconfig_sum">Habilite el nuevo estilo de Ajustes, con una foto de perfil en la barra de herramientas de inicio</string>
     <string name="novofiltro">Buscar Funciones</string>
-    <string name="novofiltro_sum">Elija entre icono de búsqueda, barra de búsqueda o sin búsqueda</string>
+    <string name="novofiltro_sum">Elija entre el icono de búsqueda, la barra de búsqueda o ninguna búsqueda (Habilitar función para desactivar Meta-AI)</string>
     <string name="menuwicon">Iconos de menú</string>
     <string name="menuwicon_sum">Agregue íconos en las opciones del menú a lo largo de la aplicación</string>
     <string name="freezelastseen">Congelar Última vez</string>
@@ -406,4 +405,11 @@
     <string name="select_contacts">Seleccionar Contactos</string>
     <string name="style_of_stories_status">Estilo de las Historias/Estados</string>
     <string name="style_of_stories_status_sum">Cambia el estilo de las Historias/Estados a algunos otros modelos disponibles en WhatsApp</string>
+    <string name="view_seen_tick">View Seen Tick</string>
+    <string name="view_seen_tick_sum">Mostrar un icono si el visto del mensaje fue enviada al destinatario o se vio una única vez</string>
+    <string name="text_color">Color del texto</string>
+    <string name="disable_the_proximity_sensor">Desactivar \'Apagar pantalla cuando se activa el sensor de proximidad\'</string>
+    <string name="disable_the_proximity_sensor_sum">Evita que la pantalla se apague al escuchar un audio con el altavoz superior</string>
+    <string name="disable_status_in_the_profile_photo">Desactivar estado en la foto de perfil</string>
+    <string name="disable_status_in_the_profile_photo_sum">Deshabilita el círculo que aparece en la foto de perfil de cada contacto cuando hay un nuevo estado</string>
 </resources>

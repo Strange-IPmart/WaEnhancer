@@ -117,7 +117,7 @@ public class AntiRevoke extends Feature {
                 int dateId = Utils.getID("date", "id");
                 for (Field textView : textViews) {
                     TextView textView1 = (TextView) XposedHelpers.getObjectField(objView, textView.getName());
-                    if (textView1 == null || textView1.getId() == dateId) {
+                    if (textView1 != null && textView1.getId() == dateId) {
                         isMRevoked(objFMessage, textView1, "antirevokestatus");
                         break;
                     }

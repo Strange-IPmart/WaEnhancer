@@ -16,6 +16,7 @@ import com.wmods.wppenhacer.xposed.utils.ReflectionUtils;
 import com.wmods.wppenhacer.xposed.utils.Utils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import de.robv.android.xposed.XC_MethodHook;
@@ -79,7 +80,7 @@ public class IGStatus extends Feature {
             }
         });
 
-        var clazz2 = XposedHelpers.findClass("com.whatsapp.updates.viewmodels.UpdatesViewModel", classLoader);
+        var clazz2 = Unobfuscator.getClassByName("UpdatesViewModel", classLoader);
         var onUpdateStatusChanged = Unobfuscator.loadOnUpdateStatusChanged(classLoader);
         logDebug(Unobfuscator.getMethodDescriptor(onUpdateStatusChanged));
         var statusInfoClass = Unobfuscator.loadStatusInfoClass(classLoader);
@@ -103,12 +104,11 @@ public class IGStatus extends Feature {
         XposedBridge.hookAllConstructors(onStatusListUpdatesClass, new XC_MethodHook() {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                var list1 = (List) param.args[2];
-                var list2 = (List) param.args[3];
+                final var lists = Arrays.stream(param.args).filter(v -> v instanceof List<?>).toArray();
                 itens.clear();
                 itens.add(0, null);
-                itens.addAll(list1);
-                itens.addAll(list2);
+                itens.addAll((List) lists[0]);
+                itens.addAll((List) lists[1]);
                 for (var mStatusContainer : mListStatusContainer)
                     mStatusContainer.updateList();
             }

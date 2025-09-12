@@ -61,6 +61,7 @@ public class WppCore {
     private static SQLiteDatabase mWaDatabase;
     public static BaseClient client;
     private static Object mCachedMessageStore;
+    private static Class<?> mSettingsNotificationsClass;
 
 
     public static void Initialize(ClassLoader loader, XSharedPreferences pref) throws Exception {
@@ -76,6 +77,9 @@ public class WppCore {
 
         convChatField = Unobfuscator.loadAntiRevokeConvChatField(loader);
         chatJidField = Unobfuscator.loadAntiRevokeChatJidField(loader);
+
+        // Settings notifications activity (required for ActivityController.EXPORTED_ACTIVITY)
+        mSettingsNotificationsClass = getSettingsNotificationsActivityClass(loader);
 
         // StartUpPrefs
         var startPrefsConfig = Unobfuscator.loadStartPrefsConfig(loader);
@@ -231,6 +235,46 @@ public class WppCore {
                 : XposedHelpers.findClass("com.whatsapp.viewonce.ui.messaging.ViewOnceViewerActivity", loader);
     }
 
+    public synchronized static Class getAboutActivityClass(@NonNull ClassLoader loader) {
+        Class oldClass = XposedHelpers.findClassIfExists("com.whatsapp.settings.About", loader);
+
+        return oldClass != null
+                ? oldClass
+                : XposedHelpers.findClass("com.whatsapp.settings.ui.About", loader);
+    }
+
+    public synchronized static Class getSettingsNotificationsActivityClass(@NonNull ClassLoader loader) {
+        if (mSettingsNotificationsClass != null)
+            return mSettingsNotificationsClass;
+
+        Class oldClass = XposedHelpers.findClassIfExists("com.whatsapp.settings.SettingsNotifications", loader);
+
+        return oldClass != null
+                ? oldClass
+                : XposedHelpers.findClass("com.whatsapp.settings.ui.SettingsNotifications", loader);
+    }
+
+    public synchronized static Class getDataUsageActivityClass(@NonNull ClassLoader loader) {
+        Class oldClass = XposedHelpers.findClassIfExists("com.whatsapp.settings.SettingsDataUsageActivity", loader);
+
+        return oldClass != null
+                ? oldClass
+                : XposedHelpers.findClass("com.whatsapp.settings.ui.SettingsDataUsageActivity", loader);
+    }
+
+    public synchronized static Class getTextStatusComposerFragmentClass(@NonNull ClassLoader loader) throws Exception {
+        var classes = new String[]{
+                "com.whatsapp.status.composer.TextStatusComposerFragment",
+                "com.whatsapp.statuscomposer.composer.TextStatusComposerFragment"
+        };
+        Class<?> result = null;
+        for (var clazz : classes) {
+            if ((result = XposedHelpers.findClassIfExists(clazz, loader)) != null)
+                return result;
+        }
+        throw new Exception("TextStatusComposerFragmentClass not found");
+    }
+
 //    public static Activity getActivityBySimpleName(String name) {
 //        for (var activity : activities) {
 //            if (activity.getClass().getSimpleName().equals(name)) {
@@ -355,7 +399,7 @@ public class WppCore {
             if (str == null) return null;
             if (str.contains(".") && str.contains("@") && str.indexOf(".") < str.indexOf("@")) {
                 return str.substring(0, str.indexOf("."));
-            } else if (str.contains("@g.us") || str.contains("@s.whatsapp.net") || str.contains("@broadcast")) {
+            } else if (str.contains("@g.us") || str.contains("@s.whatsapp.net") || str.contains("@broadcast") || str.contains("@lid")) {
                 return str.substring(0, str.indexOf("@"));
             }
             return str;
